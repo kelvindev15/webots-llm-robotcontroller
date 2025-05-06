@@ -48,7 +48,7 @@ class GeminiChat(LLMChat):
         self.model_name = model_name
         self.llm = ChatGoogleGenerativeAI(
             model=model_name,
-            temperature=0.3,
+            temperature=0,
             max_tokens=None,
             timeout=None,
             max_retries=2,

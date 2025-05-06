@@ -8,6 +8,7 @@ from common.utils.images import toBase64Image
 from common.utils.llm import create_message
 from common.utils.robot import readRobotPose, readSystemInstruction, readTargetPosition, readUserPrompt, saveRobotPose
 from dotenv import load_dotenv
+import cv2
 
 load_dotenv()
 
@@ -27,7 +28,12 @@ keyboard.enable(TIME_STEP*2)
 
 image = None
 initialPose = None
+print(supervisor.step(TIME_STEP))
 while supervisor.step(TIME_STEP) != -1:
+    image = robot.getCameraImage()
+    cv2.imshow("Camera", image)
+    if cv2.waitKey(1) == ord('q'):
+        break
     if initialPose is None:
         initialPose = {
             "position": robot.getPosition(),
@@ -100,3 +106,4 @@ while supervisor.step(TIME_STEP) != -1:
         elif last_command in set(["UP", "DOWN"]):
             robot.restoreWheelAngles()
     pass
+cv2.destroyAllWindows()

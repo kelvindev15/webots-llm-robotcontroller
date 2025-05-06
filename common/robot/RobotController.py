@@ -3,6 +3,7 @@ from controller import Supervisor
 from controller.device import Device
 from common.utils.images import extractColorChannel
 import cv2
+import numpy as np
 
 
 class CasterDevice():
@@ -103,21 +104,9 @@ class RobotController(ABC):
         pass
 
     def getCameraImage(self):
-        # Get image dimensions
-        image_data = self.camera.getImage()
-        image_width = self.camera.getWidth()
-        image_height = self.camera.getHeight()
-
-        # Extract RGB channels
-        red_channel = extractColorChannel(
-            image_data, self.camera.imageGetRed, image_width, image_height)
-        green_channel = extractColorChannel(
-            image_data, self.camera.imageGetGreen, image_width, image_height)
-        blue_channel = extractColorChannel(
-            image_data, self.camera.imageGetBlue, image_width, image_height)
-
-        # Combine channels into final image
-        output_image = cv2.merge([blue_channel, green_channel, red_channel])
+        image_data = np.array(list(self.camera.getImage()), dtype=np.uint8)
+        image_data = image_data.reshape((self.camera.getWidth(), self.camera.getHeight(), 4))
+        output_image = cv2.cvtColor(image_data, cv2.COLOR_BGRA2BGR)
         return output_image
 
     def getDirectionVector(self):

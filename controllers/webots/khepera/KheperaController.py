@@ -1,6 +1,6 @@
 from controller import Supervisor
-from common.robot.RobotController import RobotController, WheelDevice
-
+from common.robot import WheelDevice
+from common.robot.RobotController import RobotController
 
 class KheperaController(RobotController):
     def __init__(self, supervisor: Supervisor, timeStep=32, max_speed=6.28):

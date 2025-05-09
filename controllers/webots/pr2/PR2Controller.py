@@ -63,5 +63,8 @@ class PR2Controller(RobotController):
     def getRightLidarImage(self):
         return self.lidar.getPoints(85, 90)
     
+    def getLidarImage(self,atDegree: int, fov: int):
+        return self.lidar.getPoints(atDegree - (fov//2), fov)
+    
     def getCameraImage(self):
         return self.camera.getImage()

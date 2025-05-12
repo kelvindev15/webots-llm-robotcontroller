@@ -5,12 +5,8 @@ import base64
 from typing import List
 from ultralytics import YOLO
 from common.types.ObjectDetection import ObjectDetection
-from controllers.webots.adapters.lidar import LidarSnapshot
 
 model = YOLO("yolo11n.pt")
-
-def extractColorChannel(image, fn, width, height):
-    return np.array([[fn(image, width, i, j) for i in range(width)] for j in range(height)], dtype=np.uint8)
 
 def toBase64Image(image):
     _, buffer = cv2.imencode('.jpg', image)

@@ -1,15 +1,15 @@
 from controller import Supervisor
-from common.robot.RobotController import RobotController
 import numpy as np
 from controllers.webots.adapters.lidar import WBLidar
 from controllers.webots.adapters.camera import WBCamera
 from controllers.webots.pr2.wheels import PR2WheelSystem
+from controllers.webots.WBRobotController import WBRobotController
 
-class PR2Controller(RobotController):
+class PR2Controller(WBRobotController):
 
     def __init__(self, supervisor: Supervisor, timeStep=32, max_speed=6.28):
         self.wheelSystem = PR2WheelSystem(supervisor, timeStep)
-        super().__init__(max_speed)
+        super().__init__()
         self.supervisor: Supervisor = supervisor
         self.camera = WBCamera(self.supervisor.getDevice("wide_stereo_r_stereo_camera_sensor"), timeStep)
         self.lidar = WBLidar(self.supervisor.getDevice("base_laser"), timeStep)
@@ -36,18 +36,18 @@ class PR2Controller(RobotController):
         super().moveBackward()
         self.wheelSystem.setWheelSpeeds(-speed, -speed, -speed, -speed)
 
-    def turnRight(self, speed=1.0):
-        super().turnRight()
+    def rotateRight(self, speed=1.0):
+        super().rotateRight()
         self.wheelSystem.setWheelAngles(np.pi/4, -np.pi/4, -np.pi/4, np.pi/4)
         self.wheelSystem.setWheelSpeeds(speed, -speed, speed, -speed)
 
-    def turnLeft(self, speed=1.0):
-        super().turnLeft()
+    def rotateLeft(self, speed=1.0):
+        super().rotateLeft()
         self.wheelSystem.setWheelAngles(np.pi/4, -np.pi/4, -np.pi/4, np.pi/4)
         self.wheelSystem.setWheelSpeeds(-speed, speed, -speed, speed)
 
-    def stopMoving(self):
-        super().stopMoving()
+    def stop(self):
+        super().stop()
         self.wheelSystem.setWheelSpeeds(0, 0, 0, 0)
         self.wheelSystem.setWheelAngles(0, 0, 0, 0)
     
@@ -66,5 +66,3 @@ class PR2Controller(RobotController):
     def getLidarImage(self,atDegree: int, fov: int):
         return self.lidar.getPoints(atDegree - (fov//2), fov)
     
-    def getCameraImage(self):
-        return self.camera.getImage()

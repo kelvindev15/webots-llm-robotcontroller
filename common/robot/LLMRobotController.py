@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import os
 
 from common.llm.chats import LLMChat
@@ -6,105 +7,86 @@ from common.utils.images import saveImage, toBase64Image
 from common.utils.llm import create_message
 from common.robot.RobotController import RobotController
 import json
-import re
+from common.utils.misc import extractJSON
+from jsonschema import validate
+from typing import List
 
+@dataclass
+class RobotAction:
+    command: str
+    parameter: float
+
+@dataclass
+class LLMPlan():
+    goal: str
+    actions: List[RobotAction]
+
+class LLMAdapter:
+
+    def __init__(self, chat: LLMChat):
+        self.chat = chat
+        self.responseSchema = {
+            "type": "object",
+            "properties": {
+                "goal": { "type": "string" },
+                "scene_description": { "type": "string" },
+                "action": {
+                    "type": "object",
+                    "properties": {
+                        "command": { "type": "string" },
+                        "parameters": { "type": "number" },
+                    },
+                    "required": ["command", "parameters"],
+                }
+            },
+            "required": ["goal", "scene_description", "action"],
+        }
+
+    def clear(self):
+        self.chat.clear_chat()
+
+    def iterate(self, prompt, image) -> RobotAction:
+        response = self.chat.send_message(create_message(prompt, image))
+        action = json.loads(extractJSON(response))
+        validate(action, self.responseSchema)
+        return RobotAction(action["action"]["command"], float(action["action"]["parameters"]))        
+
+class ActionAdapter:
+    
+    def __init__(self, robotController: RobotController):
+        self.robot = robotController
+        self.actionMap = {
+            "FRONT": self.robot.moveForward,
+            "BACK": self.robot.moveBackward,
+            "ROTATE_LEFT": self.robot.rotateLeft,
+            "ROTATE_RIGHT": self.robot.rotateRight,
+        }
+
+    def execute(self, action: RobotAction):
+        command = action.command
+        parameter = action.parameter
+        if command in self.actionMap:
+            self.actionMap[command](parameter)
+        elif command == "COMPLETE":
+            pass
+        else:
+            print(f"Unknown command: {command}")
 
 class LLMRobotController:
 
     def __init__(self, robotController: RobotController, chat: LLMChat):
         self.robot = robotController
         self.chat = chat
-        self.systemInstruction = self.chat.get_system_instruction()
+        self.llmAdapter = LLMAdapter(chat)
+        self.actionAdapter = ActionAdapter(robotController)
 
-    def __extractJSON(self, text):
-        # This pattern looks for ```json, captures everything until the closing ```
-        pattern = re.compile(r'```json\n(.*?)```', re.DOTALL)
-        match = pattern.search(text)
-        if match:
-            return match.group(1)
-        return None
-
-    def __getPlanFromText(self, text):
-        return json.loads(self.__extractJSON(text))
-
-    def executeCommand(self, command):
-        command_map = {
-            "FRONT": self.robot.moveForward,
-            "BACK": self.robot.moveBackward,
-            "TLEFT": self.robot.turnLeft,
-            "TRIGHT": self.robot.turnRight
-        }
-        step_count = 0
-        while self.robot.computeStep() != -1 and step_count < command["steps"]:
-            command_map.get(command["command"])()
-            step_count += 1
-        self.robot.stopMoving()
-
-    def executePlan(self, plan):
-        print(plan)
-        for command in plan["commands"]:
-            if command["command"] == "FEEDBACK":
-                return False
-            elif command["command"] == "COMPLETE":
-                return True
-            self.executeCommand(command)
-        return None
-
-    def replay(self, plan):
-        self.robot.setPose(plan["initialRobotPose"])
-        return self.executePlan(plan)
-
-    def __saveOrUpdateExperimentRecord(self, id, experiment):
-        experimentFile = f"{getExperimentFolderById(id)}/experiment.json"
-        existing = os.path.exists(experimentFile)
-        updatedExeriment = None
-        if existing:
-            with open(experimentFile, "r") as file:
-                updatedExeriment = json.loads(file.read())
-                updatedExeriment["plans"].append(experiment["plans"][-1])
-                updatedExeriment["poses"].append(experiment["poses"][-1])
-        with open(experimentFile, "w") as file:
-            file.write(json.dumps(updatedExeriment)
-                       if existing else json.dumps(experiment))
-        return
-
-    def __operate(self, id, initial_prompt, plan):
-        experiment_record = {
-            "prompt": initial_prompt,
-            "model": self.chat.get_model_name(),
-            "systemInstruction": self.systemInstruction,
-            "initialRobotPose": self.robot.getPose(),
-            "plans": [plan],
-            "poses": []
-        }
-        complete = self.executePlan(plan)
-        experiment_record["poses"].append(self.robot.getPose())
-        while not complete:
-            if complete is None:
-                print("Plan in a unknown state")
-                self.__saveOrUpdateExperimentRecord(id, experiment_record)
-                experiment_record["poses"].append(self.robot.getPose())
-                return None
-            image = self.robot.getCameraImage()
-            saveImage(
-                image, f"img_{len(experiment_record['plans'])}.jpg", getExperimentFolderById(id))
-            intermediate_response = self.chat.send_message(
-                create_message("Here's what you see", toBase64Image(self.robot.getCameraImage())))
-            new_plan = self.__getPlanFromText(intermediate_response)
-            experiment_record["plans"].append(new_plan)
-            self.__saveOrUpdateExperimentRecord(id, experiment_record)
-            complete = self.executePlan(new_plan)
-            experiment_record["poses"].append(self.robot.getPose())
-        print("Plan completed")
-        return complete
-
-    def ask(self, prompt):
-        experiment_id = get_next_experiment_number()
-        experimentFolder = getExperimentFolderById(experiment_id)
-        os.makedirs(experimentFolder)
-        image = self.robot.getCameraImage()
-        saveImage(image, "img_0.jpg", experimentFolder)
-        image = toBase64Image(image)
-        self.chat.clear_chat()
-        response = self.chat.send_message(create_message(prompt, image))
-        return self.__operate(experiment_id, prompt, self.__getPlanFromText(response))
+    def ask(self, prompt) -> LLMPlan:
+        self.llmAdapter.clear()
+        action = self.llmAdapter.iterate(prompt, toBase64Image(self.robot.getCameraImage()))
+        plan = LLMPlan(action.goal, [action])
+        while action.command != "COMPLETE":
+            action = self.llmAdapter.iterate("Current view:", toBase64Image(self.robot.getCameraImage()))
+            plan = LLMPlan(plan.goal, plan.actions + [action])
+            self.actionAdapter.execute(action)
+        return plan
+    

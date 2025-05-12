@@ -44,21 +44,19 @@ def execute_plan(plan_number, robot, initial_pose):
     except Exception as e:
         print(f"Error executing plan {plan_number}: {str(e)}")
 
-keyboardController = KeyboardController()
-keyboardController.onNoKey(lambda: robot.stopMoving())
-keyboardController.onKey(keyboard.RIGHT, lambda: robot.turnRight(1.0))
-keyboardController.onKey(keyboard.UP, lambda: robot.moveForward(1.0))
-keyboardController.onKey(keyboard.DOWN, lambda: robot.moveForward(-1.0))
-keyboardController.onKey(ord('W'), lambda: robot.moveForward(1.0))
-keyboardController.onKey(ord('S'), lambda: robot.moveForward(-1.0))
-keyboardController.onKey(ord('A'), lambda: robot.turnLeft(1.0))
-keyboardController.onKey(ord('D'), lambda: robot.turnRight(1.0))
-keyboardController.onKey(keyboard.LEFT, lambda: robot.turnLeft(1.0))
-keyboardController.onKey(ord('Q'), lambda: print(robotChat.generate([create_message("What do you see?", toBase64Image(robot.getCameraImage()))])))
-keyboardController.onKey(ord('P'), lambda: llmController.ask(readUserPrompt()))
-keyboardController.onKey(ord('T'), lambda: (saveRobotPose(robot), print("Robot pose saved")))
-keyboardController.onKey(ord('Y'), lambda: (robot.setPose(readRobotPose()), print("Robot pose restored")))
-keyboardController.onKey(ord('L'), lambda: print("Front Lidar:", robot.getFrontLidarImage()))
+robotKeyboardController = KeyboardController()
+robotKeyboardController.onNoKey(lambda: robot.stop())
+robotKeyboardController.onKey(keyboard.RIGHT, lambda: robot.rotateRight(1.0))
+robotKeyboardController.onKey(keyboard.UP, lambda: robot.moveForward(1.0))
+robotKeyboardController.onKey(keyboard.DOWN, lambda: robot.moveForward(-1.0))
+robotKeyboardController.onKey(keyboard.LEFT, lambda: robot.rotateLeft(1.0))
+
+simulationKeyboardController = KeyboardController()
+simulationKeyboardController.onKey(ord('Q'), lambda: print(robotChat.generate([create_message("What do you see?", toBase64Image(robot.getCameraImage()))])))
+simulationKeyboardController.onKey(ord('P'), lambda: llmController.ask(readUserPrompt()))
+simulationKeyboardController.onKey(ord('T'), lambda: (saveRobotPose(robot), print("Robot pose saved")))
+simulationKeyboardController.onKey(ord('Y'), lambda: (robot.setPose(readRobotPose()), print("Robot pose restored")))
+simulationKeyboardController.onKey(ord('L'), lambda: print("Front Lidar:", robot.getFrontLidarImage()))
 
 while supervisor.step(TIME_STEP) != -1:
     if initialPose is None:
@@ -66,6 +64,6 @@ while supervisor.step(TIME_STEP) != -1:
             "position": robot.getPosition(),
             "rotation": robot.getRotation()
         }
-    keyboardController.execute(keyboard.getKey())    
+    simulationKeyboardController.execute(keyboard.getKey())    
     handle_keyboard_input(keyboard.getKey(), robot, initialPose)
 cv2.destroyAllWindows()

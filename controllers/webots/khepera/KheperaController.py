@@ -21,15 +21,15 @@ class KheperaController(RobotController):
         self.leftWheel.setVelocity(-speed * self.max_speed)
         self.rightWheel.setVelocity(-speed * self.max_speed)
 
-    def turnLeft(self, speed: float = 1.0):
+    def rotateLeft(self, speed: float = 1.0):
         self.leftWheel.setVelocity(-speed * self.max_speed)
         self.rightWheel.setVelocity(speed * self.max_speed)
 
-    def turnRight(self, speed: float = 1.0):
+    def rotateRight(self, speed: float = 1.0):
         self.leftWheel.setVelocity(speed * self.max_speed)
         self.rightWheel.setVelocity(-speed * self.max_speed)
 
-    def stopMoving(self):
-        super().stopMoving()
+    def stop(self):
+        super().stop()
         self.leftWheel.setVelocity(0)
         self.rightWheel.setVelocity(0)

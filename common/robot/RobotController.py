@@ -4,6 +4,9 @@ class RobotController(ABC):
     def __init__(self, max_speed=1.0):
         self.max_speed = max_speed
         
+    def doStep(self):
+        pass
+    
     def goFront(self, distance=1.0):
         if distance < 0:
             raise ValueError("Distance must be positive")

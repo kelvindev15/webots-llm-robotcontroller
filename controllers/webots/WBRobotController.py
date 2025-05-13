@@ -7,6 +7,12 @@ class WBRobotController(RobotController):
         self.supervisor: Supervisor = None
         self.camera: WBCamera = None
 
+    def doStep(self):
+        super().doStep()
+        if self.supervisor is None:
+            raise Exception("Robot controller not initialized")
+        return self.supervisor.step(64)
+
     def __checkInitilization(self):
         if not self.supervisor:
             raise Exception("Robot controller not initialized")

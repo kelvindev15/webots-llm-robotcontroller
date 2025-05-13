@@ -46,9 +46,10 @@ class WheelPosition(Enum):
     BACK_RIGHT = "br" 
 
 class PR2WheelSystem:
-    def __init__(self, supervisor: Supervisor, timeStep=32):
+    def __init__(self, supervisor: Supervisor, stepFunction, timeStep=32):
         self.timeStep = timeStep
         self.supervisor: Supervisor = supervisor
+        self.stepFunction = stepFunction
         BACK_LEFT_WHEEL = self.__getCasterWheel(WheelPosition.BACK_LEFT, timeStep)
         BACK_RIGHT_WHEEL = self.__getCasterWheel(WheelPosition.BACK_RIGHT, timeStep)
         FRONT_LEFT_WHEEL = self.__getCasterWheel(WheelPosition.FRONT_LEFT, timeStep)
@@ -87,28 +88,36 @@ class PR2WheelSystem:
         )
 
     def moveForward(self, speed: float = 1.0, distance: float = None):
-        initialPosition = self.wheels[WheelPosition.BACK_LEFT].getPosition()
         self.setWheelSpeeds(speed, speed, speed, speed)
-        remaining_distance = distance
-        while distance != None and self.supervisor.step(self.timeStep) != -1 and not(remaining_distance < TOLERANCE):
-            current_position = self.wheels[WheelPosition.BACK_LEFT].getPosition()
-            actual_distance = abs(current_position - initialPosition) * WHEEL_RADIUS
-            remaining_distance = abs(actual_distance - distance)
         if distance != None:
+            self.reach(
+                self.wheels[WheelPosition.BACK_LEFT].getPosition,
+                targetValue=distance,
+                deltaToCurrentValue=lambda delta: delta * WHEEL_RADIUS,
+                steppingFunction=self.stepFunction
+            )
             self.setWheelSpeeds(0, 0, 0, 0)
 
     def rotate(self, speed: float = 1.0, angle: float = None):
-        initialPosition = self.wheels[WheelPosition.BACK_LEFT].getPosition()
         self.setWheelAngles(np.pi/4, -np.pi/4, -np.pi/4, np.pi/4)
         self.setWheelSpeeds(speed, -speed, speed, -speed)
-        remaining_angle = np.deg2rad(angle)
-        while angle!=None and self.supervisor.step(self.timeStep) != -1 and not(remaining_angle < TOLERANCE):
-            current_position = self.wheels[WheelPosition.BACK_LEFT].getPosition()
-            actual_angle = abs(current_position - initialPosition) * WHEEL_RADIUS / CENTER_TO_WHEEL
-            remaining_angle = abs(actual_angle - np.deg2rad(angle))
         if angle != None:
+            self.reach(
+                self.wheels[WheelPosition.BACK_LEFT].getPosition,
+                targetValue=np.deg2rad(angle),
+                deltaToCurrentValue=lambda delta: abs(delta * WHEEL_RADIUS / CENTER_TO_WHEEL),
+                steppingFunction=self.stepFunction
+            )
             self.setWheelSpeeds(0, 0, 0, 0)
             self.setWheelAngles(0, 0, 0, 0)
+
+    def reach(self, getValue, targetValue, deltaToCurrentValue, steppingFunction):
+        initialValue = getValue()
+        actualValue = deltaToCurrentValue(0)
+        while steppingFunction() != -1 and not(abs(actualValue - targetValue) < TOLERANCE):
+            currentValue = getValue()
+            delta = abs(currentValue - initialValue)
+            actualValue = deltaToCurrentValue(delta)
 
     def setWheelSpeeds(self, bl: float = 0.0, br: float = 0.0, fl: float = 0.0, fr: float = 0.0):
         self.wheels[WheelPosition.BACK_LEFT].setSpeed(bl * MAX_SPEED)

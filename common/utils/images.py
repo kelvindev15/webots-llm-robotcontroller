@@ -6,7 +6,7 @@ from typing import List
 from ultralytics import YOLO
 from common.types.ObjectDetection import ObjectDetection
 
-model = YOLO("yolo11n.pt")
+model = YOLO("yolov8n.pt")
 
 def toBase64Image(image):
     _, buffer = cv2.imencode('.jpg', image)
@@ -32,3 +32,9 @@ def detectObjects(image):
                 h.item())
             )        
     return detections
+
+def plotDetections(image):
+    results = model(image, verbose=False)
+    if len(results) == 0:
+        return image
+    return results[0].plot()

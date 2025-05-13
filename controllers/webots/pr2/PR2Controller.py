@@ -4,15 +4,17 @@ from controllers.webots.adapters.lidar import WBLidar
 from controllers.webots.adapters.camera import WBCamera
 from controllers.webots.pr2.wheels import PR2WheelSystem
 from controllers.webots.WBRobotController import WBRobotController
+from simulation.observers import EventManager
 
 class PR2Controller(WBRobotController):
 
-    def __init__(self, supervisor: Supervisor, timeStep=32):
-        self.wheelSystem = PR2WheelSystem(supervisor, timeStep)
+    def __init__(self, supervisor: Supervisor, timeStep=32, eventManager: EventManager=None):
+        self.wheelSystem = PR2WheelSystem(supervisor, self.doStep, timeStep)
         super().__init__()
         self.supervisor: Supervisor = supervisor
         self.camera = WBCamera(self.supervisor.getDevice("wide_stereo_r_stereo_camera_sensor"), timeStep)
         self.lidar = WBLidar(self.supervisor.getDevice("base_laser"), timeStep)
+        self.eventManager = eventManager
         self.__initializeArms()
         
     def __initializeArms(self):
@@ -27,6 +29,11 @@ class PR2Controller(WBRobotController):
 
         leftElbow = self.supervisor.getDevice("l_elbow_flex_joint")
         leftElbow.setPosition(-2.32)
+
+    def doStep(self):
+        super().doStep()
+        if self.eventManager is not None:
+            self.eventManager.notify("step", {})
 
     def goFront(self, distance=1.0):
         super().goFront(distance)

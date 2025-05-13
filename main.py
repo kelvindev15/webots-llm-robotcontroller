@@ -4,8 +4,10 @@ from controllers.webots.pr2.PR2Controller import PR2Controller
 from controllers.webots.keyboard import KeyboardController
 from controller import Keyboard, Supervisor
 import json
-from common.utils.robot import readSystemInstruction, readUserPrompt, saveRobotPose
+from common.utils.robot import readSystemInstruction, readUserPrompt
+from common.utils.images import plotDetections
 from dotenv import load_dotenv
+from simulation.observers import EventManager
 import cv2
 import logging
 
@@ -15,9 +17,9 @@ logging.basicConfig(level=logging.DEBUG)
 
 TIME_STEP = 64
 MAX_SPEED = 6.28
-
+eventManager = EventManager()
 supervisor = Supervisor()
-robot = PR2Controller(supervisor, TIME_STEP)
+robot = PR2Controller(supervisor, TIME_STEP, eventManager)
 geminiChat = GeminiChat(system_instruction=readSystemInstruction())
 ollamaChat = OllamaChat(model_name="gemma3:4b", system_instruction=readSystemInstruction())
 openaiChat = OpenAIChat(system_instruction=readSystemInstruction())
@@ -55,8 +57,12 @@ robotKeyboardController.onKey(keyboard.LEFT, lambda: robot.rotateLeft(90))
 simulationKeyboardController = KeyboardController()
 simulationKeyboardController.onKey(ord('P'), lambda: llmController.ask(readUserPrompt()))
 simulationKeyboardController.onKey(ord('L'), lambda: print("Front Lidar:", robot.getFrontLidarImage()))
-
-while supervisor.step(TIME_STEP) != -1:
+def onStep(data):
+    image = robot.getCameraImage()
+    cv2.imshow("Camera", plotDetections(image))
+    cv2.waitKey(1)
+eventManager.subscribe("step", onStep)
+while robot.doStep() != -1:
     if initialPose is None:
         initialPose = {
             "position": robot.getPosition(),
@@ -65,9 +71,6 @@ while supervisor.step(TIME_STEP) != -1:
     pressed_key = keyboard.getKey()    
     simulationKeyboardController.execute(pressed_key)
     if not robotKeyboardController.execute(pressed_key):
-        robot.stop()
-        print("EHEHEH")
-    else:
-        print("Executing robot command")  
+        robot.stop() 
     handle_keyboard_input(keyboard.getKey(), robot, initialPose)
 cv2.destroyAllWindows()

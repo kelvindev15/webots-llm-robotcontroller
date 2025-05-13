@@ -1,24 +1,25 @@
-from common.llm.chats import GeminiChat, LLavaChat, OpenAIChat
+from common.llm.chats import GeminiChat, OllamaChat, OpenAIChat
 from common.robot.LLMRobotController import LLMRobotController
 from controllers.webots.pr2.PR2Controller import PR2Controller
 from controllers.webots.keyboard import KeyboardController
 from controller import Keyboard, Supervisor
 import json
-from common.utils.images import toBase64Image
-from common.utils.llm import create_message
-from common.utils.robot import readRobotPose, readSystemInstruction, readUserPrompt, saveRobotPose
+from common.utils.robot import readSystemInstruction, readUserPrompt, saveRobotPose
 from dotenv import load_dotenv
 import cv2
+import logging
 
 load_dotenv()
+rootLogger = logging.getLogger()
+logging.basicConfig(level=logging.DEBUG)
 
 TIME_STEP = 64
 MAX_SPEED = 6.28
 
 supervisor = Supervisor()
-robot = PR2Controller(supervisor, TIME_STEP, MAX_SPEED)
+robot = PR2Controller(supervisor, TIME_STEP)
 geminiChat = GeminiChat(system_instruction=readSystemInstruction())
-llavaChat = LLavaChat(system_instruction=readSystemInstruction())
+ollamaChat = OllamaChat(model_name="gemma3:4b", system_instruction=readSystemInstruction())
 openaiChat = OpenAIChat(system_instruction=readSystemInstruction())
 robotChat = geminiChat
 llmController = LLMRobotController(robot, robotChat)
@@ -46,16 +47,13 @@ def execute_plan(plan_number, robot, initial_pose):
 
 robotKeyboardController = KeyboardController()
 robotKeyboardController.onNoKey(lambda: robot.stop())
-robotKeyboardController.onKey(keyboard.RIGHT, lambda: robot.rotateRight(1.0))
-robotKeyboardController.onKey(keyboard.UP, lambda: robot.moveForward(1.0))
-robotKeyboardController.onKey(keyboard.DOWN, lambda: robot.moveForward(-1.0))
-robotKeyboardController.onKey(keyboard.LEFT, lambda: robot.rotateLeft(1.0))
+robotKeyboardController.onKey(keyboard.RIGHT, lambda: robot.rotateRight(90))
+robotKeyboardController.onKey(keyboard.UP, lambda: robot.goFront(1.0))
+robotKeyboardController.onKey(keyboard.DOWN, lambda: robot.goBack(1.0))
+robotKeyboardController.onKey(keyboard.LEFT, lambda: robot.rotateLeft(90))
 
 simulationKeyboardController = KeyboardController()
-simulationKeyboardController.onKey(ord('Q'), lambda: print(robotChat.generate([create_message("What do you see?", toBase64Image(robot.getCameraImage()))])))
 simulationKeyboardController.onKey(ord('P'), lambda: llmController.ask(readUserPrompt()))
-simulationKeyboardController.onKey(ord('T'), lambda: (saveRobotPose(robot), print("Robot pose saved")))
-simulationKeyboardController.onKey(ord('Y'), lambda: (robot.setPose(readRobotPose()), print("Robot pose restored")))
 simulationKeyboardController.onKey(ord('L'), lambda: print("Front Lidar:", robot.getFrontLidarImage()))
 
 while supervisor.step(TIME_STEP) != -1:
@@ -64,6 +62,12 @@ while supervisor.step(TIME_STEP) != -1:
             "position": robot.getPosition(),
             "rotation": robot.getRotation()
         }
-    simulationKeyboardController.execute(keyboard.getKey())    
+    pressed_key = keyboard.getKey()    
+    simulationKeyboardController.execute(pressed_key)
+    if not robotKeyboardController.execute(pressed_key):
+        robot.stop()
+        print("EHEHEH")
+    else:
+        print("Executing robot command")  
     handle_keyboard_input(keyboard.getKey(), robot, initialPose)
 cv2.destroyAllWindows()

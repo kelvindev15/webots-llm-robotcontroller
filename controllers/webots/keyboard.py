@@ -13,7 +13,10 @@ class KeyboardController:
         return self    
 
     def execute(self, key):
-        if key == -1 and self.NO_KEY_HANDLER != None:
+        if key in self.controls:
+            self.controls[key]()
+            return True
+        elif key == -1 and self.NO_KEY_HANDLER != None:
             self.NO_KEY_HANDLER()
-        elif key in self.controls:
-            self.controls[key]()    
+        return False
+        

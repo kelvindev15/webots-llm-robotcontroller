@@ -1,8 +1,13 @@
 from controllers.webots.adapters.motor import WBMotor
 from controller import Supervisor
 from enum import Enum
+import numpy as np
+from controller.constants import constant 
 
 MAX_SPEED = 6.28
+TOLERANCE = 0.05
+WHEEL_RADIUS = 0.08
+CENTER_TO_WHEEL = 0.318
 
 class PR2Wheel():
     def __init__(self, l_wheel: WBMotor, r_wheel: WBMotor):
@@ -42,6 +47,7 @@ class WheelPosition(Enum):
 
 class PR2WheelSystem:
     def __init__(self, supervisor: Supervisor, timeStep=32):
+        self.timeStep = timeStep
         self.supervisor: Supervisor = supervisor
         BACK_LEFT_WHEEL = self.__getCasterWheel(WheelPosition.BACK_LEFT, timeStep)
         BACK_RIGHT_WHEEL = self.__getCasterWheel(WheelPosition.BACK_RIGHT, timeStep)
@@ -54,6 +60,12 @@ class PR2WheelSystem:
             WheelPosition.FRONT_RIGHT: FRONT_RIGHT_WHEEL
         }
     
+    def __getWheel(self, position: WheelPosition, timeStep: int):
+        return PR2Wheel(
+            self.__getWheelMotor(position, "l", timeStep),
+            self.__getWheelMotor(position, "r", timeStep)
+        )
+    
     def __getWheelMotor(self, position: WheelPosition, side: str, timeStep: int):
         return WBMotor(
             self.supervisor.getDevice(f"{position.value}_caster_{side}_wheel_joint"),
@@ -61,25 +73,43 @@ class PR2WheelSystem:
             timeStep
         )
     
+    def __getCasterWheel(self, position: WheelPosition, timeStep: int):
+        return PR2CasterWheel(
+            self.__getWheel(position, timeStep),
+            self.__getCasterMotor(position, timeStep)
+        )  
+
     def __getCasterMotor(self, position: WheelPosition, timeStep: int):
         return WBMotor(
             self.supervisor.getDevice(f"{position.value}_caster_rotation_joint"),
             self.supervisor.getDevice(f"{position.value}_caster_rotation_joint_sensor"),
             timeStep
         )
-    
-    def __getWheel(self, position: WheelPosition, timeStep: int):
-        return PR2Wheel(
-            self.__getWheelMotor(position, "l", timeStep),
-            self.__getWheelMotor(position, "r", timeStep)
-        )
-    
-    def __getCasterWheel(self, position: WheelPosition, timeStep: int):
-        return PR2CasterWheel(
-            self.__getWheel(position, timeStep),
-            self.__getCasterMotor(position, timeStep)
-        )
-    
+
+    def moveForward(self, speed: float = 1.0, distance: float = None):
+        initialPosition = self.wheels[WheelPosition.BACK_LEFT].getPosition()
+        self.setWheelSpeeds(speed, speed, speed, speed)
+        remaining_distance = distance
+        while distance != None and self.supervisor.step(self.timeStep) != -1 and not(remaining_distance < TOLERANCE):
+            current_position = self.wheels[WheelPosition.BACK_LEFT].getPosition()
+            actual_distance = abs(current_position - initialPosition) * WHEEL_RADIUS
+            remaining_distance = abs(actual_distance - distance)
+        if distance != None:
+            self.setWheelSpeeds(0, 0, 0, 0)
+
+    def rotate(self, speed: float = 1.0, angle: float = None):
+        initialPosition = self.wheels[WheelPosition.BACK_LEFT].getPosition()
+        self.setWheelAngles(np.pi/4, -np.pi/4, -np.pi/4, np.pi/4)
+        self.setWheelSpeeds(speed, -speed, speed, -speed)
+        remaining_angle = np.deg2rad(angle)
+        while angle!=None and self.supervisor.step(self.timeStep) != -1 and not(remaining_angle < TOLERANCE):
+            current_position = self.wheels[WheelPosition.BACK_LEFT].getPosition()
+            actual_angle = abs(current_position - initialPosition) * WHEEL_RADIUS / CENTER_TO_WHEEL
+            remaining_angle = abs(actual_angle - np.deg2rad(angle))
+        if angle != None:
+            self.setWheelSpeeds(0, 0, 0, 0)
+            self.setWheelAngles(0, 0, 0, 0)
+
     def setWheelSpeeds(self, bl: float = 0.0, br: float = 0.0, fl: float = 0.0, fr: float = 0.0):
         self.wheels[WheelPosition.BACK_LEFT].setSpeed(bl * MAX_SPEED)
         self.wheels[WheelPosition.BACK_RIGHT].setSpeed(br * MAX_SPEED)
@@ -90,4 +120,4 @@ class PR2WheelSystem:
         self.wheels[WheelPosition.BACK_LEFT].setRotation(bl)
         self.wheels[WheelPosition.BACK_RIGHT].setRotation(br)
         self.wheels[WheelPosition.FRONT_LEFT].setRotation(fl)
-        self.wheels[WheelPosition.FRONT_RIGHT].setRotation(fr)    
+        self.wheels[WheelPosition.FRONT_RIGHT].setRotation(fr)         

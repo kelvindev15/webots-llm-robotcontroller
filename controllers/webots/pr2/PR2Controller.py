@@ -7,7 +7,7 @@ from controllers.webots.WBRobotController import WBRobotController
 
 class PR2Controller(WBRobotController):
 
-    def __init__(self, supervisor: Supervisor, timeStep=32, max_speed=6.28):
+    def __init__(self, supervisor: Supervisor, timeStep=32):
         self.wheelSystem = PR2WheelSystem(supervisor, timeStep)
         super().__init__()
         self.supervisor: Supervisor = supervisor
@@ -28,23 +28,21 @@ class PR2Controller(WBRobotController):
         leftElbow = self.supervisor.getDevice("l_elbow_flex_joint")
         leftElbow.setPosition(-2.32)
 
-    def moveForward(self, speed=1.0):
-        super().moveForward()
-        self.wheelSystem.setWheelSpeeds(speed, speed, speed, speed)
+    def goFront(self, distance=1.0):
+        super().goFront(distance)
+        self.wheelSystem.moveForward(distance=distance)
 
-    def moveBackward(self, speed=1.0):
-        super().moveBackward()
-        self.wheelSystem.setWheelSpeeds(-speed, -speed, -speed, -speed)
+    def goBack(self, distance=1.0):
+        super().goBack(distance)
+        self.wheelSystem.moveForward(speed=-1.0, distance=distance)
 
-    def rotateRight(self, speed=1.0):
-        super().rotateRight()
-        self.wheelSystem.setWheelAngles(np.pi/4, -np.pi/4, -np.pi/4, np.pi/4)
-        self.wheelSystem.setWheelSpeeds(speed, -speed, speed, -speed)
+    def rotateLeft(self, angle=1.0):
+        super().rotateLeft(angle)
+        self.wheelSystem.rotate(speed=-1.0, angle=angle)
 
-    def rotateLeft(self, speed=1.0):
-        super().rotateLeft()
-        self.wheelSystem.setWheelAngles(np.pi/4, -np.pi/4, -np.pi/4, np.pi/4)
-        self.wheelSystem.setWheelSpeeds(-speed, speed, -speed, speed)
+    def rotateRight(self, angle=1.0):
+        super().rotateRight(angle)
+        self.wheelSystem.rotate(angle=angle)
 
     def stop(self):
         super().stop()

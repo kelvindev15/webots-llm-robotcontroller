@@ -1,4 +1,4 @@
-from common.llm.chats import GeminiChat, LLavaChat
+from common.llm.chats import GeminiChat, OllamaChat
 from common.robot.LLMRobotController import LLMRobotController
 from common.robot.khepera.KheperaController import KheperaController
 from controller import Keyboard, Supervisor
@@ -15,7 +15,7 @@ MAX_SPEED = 12.56
 supervisor = Supervisor()
 robot = KheperaController(supervisor, TIME_STEP, MAX_SPEED)
 geminiChat = GeminiChat(system_instruction=readSystemInstruction())
-llavaChat = LLavaChat(system_instruction=readSystemInstruction())
+llavaChat = OllamaChat(system_instruction=readSystemInstruction())
 robotChat = geminiChat
 llmController = LLMRobotController(robot, robotChat)
 

@@ -56,15 +56,14 @@ class GeminiChat(LLMChat):
         )
 
 
-class LLavaChat(LLMChat):
+class OllamaChat(LLMChat):
     def __init__(self, model_name="llava", system_instruction=None):
         super().__init__(system_instruction)
         self.model_name = model_name
         self.llm = ChatOllama(
             model=model_name,
             temperature=0,
-        )
-
+        )       
 
 class OpenAIChat(LLMChat):
     def __init__(self, model_name="gpt-4o-mini", system_instruction=None):

@@ -24,14 +24,21 @@ class LLMRobotController:
         self.chat = chat
         self.llmAdapter = LLMAdapter(chat)
         self.actionAdapter = ActionAdapter(robotController)
+        self.locked = False
 
     def ask(self, prompt) -> LLMPlan:
+        if self.locked:
+            logger.debug("Robot is locked, cannot ask.")
+            return None
+        self.locked = True
         self.llmAdapter.clear()
-        action = self.llmAdapter.iterate(prompt, toBase64Image(self.robot.getCameraImage()))
-        plan = LLMPlan(prompt, [action])
-        while action.command != "COMPLETE":
-            action = self.llmAdapter.iterate("Current view:", toBase64Image(self.robot.getCameraImage()))
-            plan = LLMPlan(plan.goal, plan.actions + [action])
-            self.actionAdapter.execute(action)
-        return plan
+        def handler(prompt: str):
+            print("HANDLING")
+            action = self.llmAdapter.iterate(prompt, toBase64Image(self.robot.getCameraImage()))
+            if action.command != "COMPLETE":
+                self.actionAdapter.execute(action, lambda: handler("Current view:"))
+            else:
+                self.locked = False
+                logger.debug("Plan completed")    
+        handler(prompt)
     

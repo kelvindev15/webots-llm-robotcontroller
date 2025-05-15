@@ -2,6 +2,8 @@ from controller.lidar import Lidar
 from typing import List
 import numpy as np
 from dataclasses import dataclass
+from controllers.webots.adapters.motor import WBMotor
+from typing import Callable
  
 @dataclass
 class LidarConfig:
@@ -98,3 +100,21 @@ class WBLidar:
         """Get reversed range image from lidar"""
         return list(reversed(self.lidar.getRangeImage()))
     
+class WBTiltLidar:
+    def __init__(self, lidar: WBLidar, motor: WBMotor):
+        self.lidar = lidar
+        self.motor = motor
+
+    @property
+    def maxTiltPosition(self) -> float:
+        return self.motor.maxPosition
+    
+    @property
+    def minTiltPosition(self) -> float:
+        return self.motor.minPosition
+    
+    def setPositionByPercentage(self, percent: float, onComplete: Callable[[None], None] = None):
+        self.motor.setPositionByPercentage(percent, onComplete)
+
+    def getPositionPercent(self) -> float:
+        return self.motor.getPositionPercent()    

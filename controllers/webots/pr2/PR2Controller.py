@@ -1,8 +1,15 @@
-from controllers.webots.pr2.wheels import PR2WheelSystem, PR2Wheel
+from controllers.webots.pr2.wheels import PR2WheelSystem
 from controllers.webots.WBRobotController import WBRobotController
 from simulation.observers import EventManager, EventType, EventData
 from controllers.webots.pr2.devices import PR2Devices
+import numpy as np
 
+
+def unlockAndHandle(unlocker, handler):
+    unlocker()
+    if handler is not None:
+        handler()
+        
 class PR2Controller(WBRobotController):
 
     def __init__(self, devices: PR2Devices, eventManager: EventManager=None):
@@ -10,41 +17,78 @@ class PR2Controller(WBRobotController):
         self.devices = devices
         self.camera = devices.CAMERA
         self.lidar = devices.BASE_LASER
+        self.tiltLidar = devices.TILT_LIDAR
         self.wheelSystem = PR2WheelSystem(devices, eventManager)
         self.__initializeArms()
         self.eventManager = eventManager
+        self.devices.LASER_TILT_JOINT.setPositionByPercentage(1.0)
         eventManager.subscribe(EventType.SIMULATION_STEP, self.__onSimulationStep)
+        self.locked = False
         
+    def __lock(self):
+        self.locked = True
+
+    def __unlock(self):
+        self.locked = False        
+    
     def __onSimulationStep(self, _: EventData):
         self.devices.HEAD_PAN_JOINT.setPositionByPercentage(0.5)
-        self.devices.HEAD_PAN_JOINT.setSpeed(PR2Wheel.MAX_SPEED)
 
     def __initializeArms(self):
-        self.devices.LEFT_SHOULDER_LIFT.toMinPosition()
-        self.devices.RIGHT_SHOULDER_LIFT.toMinPosition()
-        self.devices.LEFT_ELBOW_FLEX.toMinPosition()
-        self.devices.RIGHT_ELBOW_FLEX.toMinPosition()
+        self.devices.LASER_TILT_JOINT.setPositionByPercentage(0.2)
+        
+        self.devices.LEFT_SHOULDER_LIFT.setToMaxPosition()
+        self.devices.RIGHT_SHOULDER_LIFT.setToMaxPosition()
+        
+        self.devices.LEFT_ELBOW_FLEX.setToMinPosition()
+        self.devices.RIGHT_ELBOW_FLEX.setToMinPosition()
 
-    def goFront(self, distance=1.0):
+    def goFront(self, distance=1.0, completionHandler=None):
         super().goFront(distance)
-        self.wheelSystem.moveForward(distance=distance)
+        if distance is not None and not self.locked:
+            self.__lock()
+            self.wheelSystem.moveForward(distance=distance, completionHandler=lambda: unlockAndHandle(self.__unlock, completionHandler))
+        elif not self.locked:
+            self.wheelSystem.moveForward(distance=distance, completionHandler=completionHandler)
 
-    def goBack(self, distance=1.0):
+    def goBack(self, distance=1.0, completionHandler=None):
         super().goBack(distance)
-        self.wheelSystem.moveForward(speed=-1.0, distance=distance)
+        if distance is not None and not self.locked:
+            self.__lock()
+            self.wheelSystem.moveForward(speed=-1.0, distance=distance, completionHandler=lambda: unlockAndHandle(self.__unlock, completionHandler))
+        elif not self.locked:
+            self.wheelSystem.moveForward(speed=-1.0, distance=distance, completionHandler=completionHandler)
 
-    def rotateLeft(self, angle=1.0):
+    def rotateLeft(self, angle=1.0, completionHandler=None):
         super().rotateLeft(angle)
-        self.wheelSystem.rotate(speed=-1.0, angle=angle)
+        if angle is not None and not self.locked:
+            self.__lock()
+            self.wheelSystem.rotate(speed=-1.0, angle=angle, completionHandler=lambda: unlockAndHandle(self.__unlock, completionHandler))
+        elif not self.locked:
+            self.wheelSystem.rotate(speed=-1.0, angle=angle, completionHandler=completionHandler)
 
-    def rotateRight(self, angle=1.0):
+    def rotateRight(self, angle=1.0, completionHandler=None):
         super().rotateRight(angle)
-        self.wheelSystem.rotate(angle=angle)
+        if not self.locked and angle is not None:
+            self.__lock()
+            self.wheelSystem.rotate(angle=angle, completionHandler=lambda: unlockAndHandle(self.__unlock, completionHandler))
+        elif not self.locked:
+            self.wheelSystem.rotate(angle=angle, completionHandler=completionHandler)
 
     def stop(self):
-        super().stop()
-        self.wheelSystem.stop()
-    
+        if not self.locked:
+            super().stop()
+            self.wheelSystem.stop()
+
+    def getDepthImage(self):
+        samples = np.linspace(0.0, 1.0, 300)
+        end = len(samples)
+        def handler(index):
+            if index < end:
+                self.tiltLidar.setPositionByPercentage(samples[index+1], onComplete=lambda: handler(index + 1))
+        self.tiltLidar.setPositionByPercentage(samples[0], onComplete=lambda: handler(0))
+
+
     def getFullLidarImage(self):
         return self.lidar.getImage()
         

@@ -1,13 +1,17 @@
 from controller.motor import Motor
 from controller.position_sensor import PositionSensor
 from controller.constants import constant
+from simulation.observers import EventManager, EventData, EventType
+from typing import Callable
 
 class WBMotor():
-    def __init__(self, motor: Motor, timeStep: int, minPosition: float = -float('inf'), maxPosition: float = float('inf')):
+    def __init__(self, motor: Motor, timeStep: int, eventManager: EventManager):
         self.motor: Motor = motor
+        self.eventManager: EventManager = eventManager
         self.sensor: PositionSensor = self.motor.position_sensor
-        self.minPosition = minPosition
-        self.maxPosition = maxPosition
+        self.minPosition = self.motor.min_position
+        self.maxPosition = self.motor.max_position
+        self.maxVelocity = self.motor.max_velocity
         self.sensor.enable(timeStep)
         self.motor.setPosition(float('inf'))
         self.motor.setVelocity(0)
@@ -21,9 +25,22 @@ class WBMotor():
     def setPosition(self, position: float):
         self.motor.setPosition(position)
 
-    def setPositionByPercentage(self, percent: float):
+    def getPositionPercent(self) -> float:
+        return (self.getPosition() - self.minPosition) / (self.maxPosition - self.minPosition)
+
+    def setPositionByPercentage(self, percent: float, onComplete: Callable[[None], None] = None):
         position = self.minPosition + (self.maxPosition - self.minPosition) * percent
         self.setPosition(position)
+        self.setSpeed(self.maxVelocity)
+        def handler(_: EventData):
+            if self.__fuzzyEquals(self.getPositionPercent(), percent):
+                onComplete()
+                self.eventManager.unsubscribe(handler)
+        if onComplete is not None:
+            self.eventManager.subscribe(EventType.SIMULATION_STEP, handler)        
+
+    def __fuzzyEquals(self, a: float, b: float, epsilon: float = 0.01) -> bool:
+        return abs(a - b) < epsilon
 
     def getPosition(self) -> float:
         return self.sensor.getValue()
@@ -31,11 +48,11 @@ class WBMotor():
     def stop(self):
         self.motor.setVelocity(0)
 
-    def toMinPosition(self):
-        self.setPosition(self.minPosition)
+    def setToMinPosition(self):
+        self.setPositionByPercentage(0.0)
 
-    def toMaxPosition(self):    
-        self.setPosition(self.maxPosition)    
+    def setToMaxPosition(self):
+        self.setPositionByPercentage(1.0)
 
     @property
     def isRotational(self) -> bool:

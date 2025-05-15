@@ -21,9 +21,9 @@ TIME_STEP = 64
 MAX_SPEED = 6.28
 eventManager = EventManager()
 supervisor = Supervisor()
-pr2Devices = PR2Devices(supervisor, TIME_STEP)
+pr2Devices = PR2Devices(supervisor, eventManager, TIME_STEP)
 robot = PR2Controller(pr2Devices, eventManager)
-geminiChat = GeminiChat(system_instruction=readSystemInstruction())
+geminiChat = GeminiChat(model_name="gemma-3-27b-it", system_instruction=readSystemInstruction())
 ollamaChat = OllamaChat(model_name="gemma3:4b", system_instruction=readSystemInstruction())
 openaiChat = OpenAIChat(system_instruction=readSystemInstruction())
 robotChat = geminiChat
@@ -54,21 +54,22 @@ robotKeyboardController.onKey(keyboard.RIGHT, lambda: robot.rotateRight(90))
 robotKeyboardController.onKey(keyboard.UP, lambda: robot.goFront(1.0))
 robotKeyboardController.onKey(keyboard.DOWN, lambda: robot.goBack(1.0))
 robotKeyboardController.onKey(keyboard.LEFT, lambda: robot.rotateLeft(90))
-robotKeyboardController.onKey(ord('W'), lambda: robot.goFront(distance=None))
-robotKeyboardController.onKey(ord('A'), lambda: robot.rotateLeft(angle=None))
-robotKeyboardController.onKey(ord('S'), lambda: robot.goBack(distance=None))
-robotKeyboardController.onKey(ord('D'), lambda: robot.rotateRight(angle=None))
+robotKeyboardController.onKey(ord('W'), lambda: robot.goFront(None))
+robotKeyboardController.onKey(ord('A'), lambda: robot.rotateLeft(None))
+robotKeyboardController.onKey(ord('S'), lambda: robot.goBack(None))
+robotKeyboardController.onKey(ord('D'), lambda: robot.rotateRight(None))
 
 simulationKeyboardController = KeyboardController()
 simulationKeyboardController.onKey(ord('P'), lambda: llmController.ask(readUserPrompt()))
 simulationKeyboardController.onKey(ord('L'), lambda: print("Front Lidar:", robot.getFrontLidarImage()))
+simulationKeyboardController.onKey(ord('O'), lambda: robot.getDepthImage())
 
 def onStep(_: StepEventData):
     image = robot.getCameraImage()
     cv2.imshow("Camera", plotDetections(image))
     cv2.waitKey(1)
 
-eventManager.subscribe(EventType.SIMULATION_STEP, onStep)
+# eventManager.subscribe(EventType.SIMULATION_STEP, onStep)
 
 step_counter = 0
 while supervisor.step(TIME_STEP) != -1:

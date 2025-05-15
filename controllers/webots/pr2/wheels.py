@@ -46,7 +46,6 @@ class WheelPosition(Enum):
 
 class PR2WheelSystem:
     def __init__(self, devices: PR2Devices, eventManager: EventManager):
-        self.locked = False
         self.__TOLERANCE = 0.05
         self.eventManager = eventManager
         self.wheels = {
@@ -64,58 +63,56 @@ class PR2WheelSystem:
             )
         }
 
-    def lock(self):
-        self.locked = True    
-    
-    def unlock(self):
-        self.locked = False
-
-    def moveForward(self, speed: float = 1.0, distance: float = None):
+    def moveForward(self, speed: float = 1.0, distance: float = None, completionHandler=None):
         self.__setWheelSpeeds(speed, speed, speed, speed)
-        if distance != None and not(self.locked):
+        if distance != None:
             self.reach(
                 self.wheels[WheelPosition.BACK_LEFT].getPosition,
                 targetValue=distance,
                 deltaToCurrentValue=lambda delta: delta * PR2Wheel.WHEEL_RADIUS,
+                completionHandler=completionHandler
             )
+        elif completionHandler is not None:
+            completionHandler()
 
-    def rotate(self, speed: float = 1.0, angle: float = None):
+    def rotate(self, speed: float = 1.0, angle: float = None, completionHandler=None):
         self.__setWheelAngles(np.pi/4, -np.pi/4, -np.pi/4, np.pi/4)
         self.__setWheelSpeeds(speed, -speed, speed, -speed)
-        if angle != None and not(self.locked):
+        if angle != None:
             self.reach(
                 self.wheels[WheelPosition.BACK_LEFT].getPosition,
                 targetValue=np.deg2rad(angle),
                 deltaToCurrentValue=lambda delta: abs(delta * PR2Wheel.WHEEL_RADIUS / PR2Wheel.CENTER_TO_WHEEL),
+                completionHandler=completionHandler
             )
+        elif completionHandler is not None:
+            completionHandler()
 
     def stop(self):
         self.__setWheelSpeeds(0, 0, 0, 0)
         self.__setWheelAngles(0, 0, 0, 0)        
 
-    def reach(self, getValue, targetValue, deltaToCurrentValue):
-        self.lock()
+    def reach(self, getValue, targetValue, deltaToCurrentValue, completionHandler=None):
         initialValue = getValue()
         def handler(_: EventData):
             currentValue = getValue()
             delta = abs(currentValue - initialValue)
             actualValue = deltaToCurrentValue(delta)
             if abs(actualValue - targetValue) < self.__TOLERANCE:
-                self.unlock()
                 self.stop()
-                self.eventManager.unsubscribe(handler)   
+                self.eventManager.unsubscribe(handler)
+                if completionHandler is not None:
+                    completionHandler()  
         self.eventManager.subscribe(EventType.SIMULATION_STEP, handler)
         
     def __setWheelSpeeds(self, bl: float = 0.0, br: float = 0.0, fl: float = 0.0, fr: float = 0.0):
-        if not(self.locked):
-            self.wheels[WheelPosition.BACK_LEFT].setSpeed(bl * PR2Wheel.MAX_SPEED)
-            self.wheels[WheelPosition.BACK_RIGHT].setSpeed(br * PR2Wheel.MAX_SPEED)
-            self.wheels[WheelPosition.FRONT_LEFT].setSpeed(fl * PR2Wheel.MAX_SPEED)
-            self.wheels[WheelPosition.FRONT_RIGHT].setSpeed(fr * PR2Wheel.MAX_SPEED)
+        self.wheels[WheelPosition.BACK_LEFT].setSpeed(bl * PR2Wheel.MAX_SPEED)
+        self.wheels[WheelPosition.BACK_RIGHT].setSpeed(br * PR2Wheel.MAX_SPEED)
+        self.wheels[WheelPosition.FRONT_LEFT].setSpeed(fl * PR2Wheel.MAX_SPEED)
+        self.wheels[WheelPosition.FRONT_RIGHT].setSpeed(fr * PR2Wheel.MAX_SPEED)
 
     def __setWheelAngles(self, bl: float = 0.0, br: float = 0.0, fl: float = 0.0, fr: float = 0.0):
-        if not(self.locked):    
-            self.wheels[WheelPosition.BACK_LEFT].setRotation(bl)
-            self.wheels[WheelPosition.BACK_RIGHT].setRotation(br)
-            self.wheels[WheelPosition.FRONT_LEFT].setRotation(fl)
-            self.wheels[WheelPosition.FRONT_RIGHT].setRotation(fr)         
+        self.wheels[WheelPosition.BACK_LEFT].setRotation(bl)
+        self.wheels[WheelPosition.BACK_RIGHT].setRotation(br)
+        self.wheels[WheelPosition.FRONT_LEFT].setRotation(fl)
+        self.wheels[WheelPosition.FRONT_RIGHT].setRotation(fr)         

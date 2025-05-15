@@ -14,13 +14,13 @@ class ActionAdapter:
             "ROTATE_LEFT": self.robot.rotateLeft,
             "ROTATE_RIGHT": self.robot.rotateRight,
         }
-
-    def execute(self, action: RobotAction):
+    
+    def execute(self, action: RobotAction, completionHandler=None):
         command = action.command
         parameter = action.parameter
         if command in self.actionMap:
             logger.debug("Executing action: %s with parameter: %s", command, parameter)
-            self.actionMap[command](parameter)
+            self.actionMap[command](parameter, completionHandler)
             self.robot.stop()
         elif command == "COMPLETE":
             logger.debug("Plan completed")

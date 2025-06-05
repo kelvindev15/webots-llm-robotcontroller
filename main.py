@@ -4,14 +4,16 @@ from controllers.webots.pr2.PR2Controller import PR2Controller
 from controllers.webots.pr2.devices import PR2Devices
 from controllers.webots.keyboard import KeyboardController
 from controller import Keyboard, Supervisor
-import json
 from common.utils.robot import readSystemInstruction, readUserPrompt
-from common.utils.images import plotDetections
+from common.utils.images import box_label, detectObjects, toBase64Image
+from common.utils.llm import create_message
+from common.utils.misc import extractJSON
 from dotenv import load_dotenv
 from simulation.observers import EventManager
-import cv2
-import logging
 from simulation.events import EventType, StepEventData
+import cv2
+import json
+import logging
 
 load_dotenv()
 rootLogger = logging.getLogger()
@@ -23,10 +25,11 @@ eventManager = EventManager()
 supervisor = Supervisor()
 pr2Devices = PR2Devices(supervisor, eventManager, TIME_STEP)
 robot = PR2Controller(pr2Devices, eventManager)
-geminiChat = GeminiChat(model_name="gemma-3-27b-it", system_instruction=readSystemInstruction())
-ollamaChat = OllamaChat(model_name="gemma3:4b", system_instruction=readSystemInstruction())
-openaiChat = OpenAIChat(system_instruction=readSystemInstruction())
+geminiChat = GeminiChat()
+ollamaChat = OllamaChat(model_name="gemma3:4b")
+openaiChat = OpenAIChat()
 robotChat = geminiChat
+robotChat.set_system_instruction(readSystemInstruction())
 llmController = LLMRobotController(robot, robotChat)
 
 keyboard = Keyboard()
@@ -58,15 +61,60 @@ robotKeyboardController.onKey(ord('W'), lambda: robot.goFront(None))
 robotKeyboardController.onKey(ord('A'), lambda: robot.rotateLeft(None))
 robotKeyboardController.onKey(ord('S'), lambda: robot.goBack(None))
 robotKeyboardController.onKey(ord('D'), lambda: robot.rotateRight(None))
+robotKeyboardController.onKey(ord('Q'), lambda: robot.stop())
+robotKeyboardController.onKey(ord('I'), lambda: print("Lidar is at position:", robot.tiltLidar.getPositionPercent()))
+
+
+
+boundingBoxPrompt = """
+Output the objects bounding boxes in the image in json format.
+The json should be a list of objects, each object should have the following properties:
+- cls: the name of the object
+- conf: the confidence of the detection
+- x: the x coordinate of the center of the bounding box
+- y: the y coordinate of the center of the bounding box
+- w: the width of the bounding box
+- h: the height of the bounding box
+
+The json should be in the following format:
+[
+    {
+        "name": "object_name",
+        "confidence": 0.9,
+        "x": 100,
+        "y": 300,
+        "w": 40,
+        "h": 20
+    },
+    ...
+]
+
+Output the json without any additional text.
+
+"""
+
+def llmBoundingBox():
+    image = robot.getCameraImage()
+    response = robotChat.send_message(create_message(boundingBoxPrompt, toBase64Image(image)))
+    detections = json.loads(extractJSON(response))
+    for detection in detections:
+        image = box_label(image, ((detection["x"] - 0.5 * detection["w"]), (detection["y"] - 0.5 * detection["h"]), (detection["x"] + 0.5 * detection["w"]), (detection["y"] + 0.5 * detection["h"])), detection["cls"], (0, 255, 0), (255, 255, 255))
+    cv2.imshow("Camera", image)
+    cv2.waitKey(1)
+
 
 simulationKeyboardController = KeyboardController()
 simulationKeyboardController.onKey(ord('P'), lambda: llmController.ask(readUserPrompt()))
 simulationKeyboardController.onKey(ord('L'), lambda: print("Front Lidar:", robot.getFrontLidarImage()))
-simulationKeyboardController.onKey(ord('O'), lambda: robot.getDepthImage())
+simulationKeyboardController.onKey(ord('B'), lambda: llmBoundingBox())
+
 
 def onStep(_: StepEventData):
     image = robot.getCameraImage()
-    cv2.imshow("Camera", plotDetections(image))
+    detections = detectObjects(image)
+    for detection in detections:
+        image = box_label(image, ((detection.x - 0.5 * detection.w), (detection.y - 0.5 * detection.h), (detection.x + 0.5 * detection.w), (detection.y + 0.5 * detection.h)), detection.cls, (0, 255, 0), (255, 255, 255))
+    cv2.imshow("Camera", image)
     cv2.waitKey(1)
 
 # eventManager.subscribe(EventType.SIMULATION_STEP, onStep)
@@ -77,7 +125,8 @@ while supervisor.step(TIME_STEP) != -1:
     pressed_key = keyboard.getKey()    
     simulationKeyboardController.execute(pressed_key)
     if not(robotKeyboardController.execute(pressed_key)):
-        robot.stop() 
+        robot.stop()
+        #robot.stopTiltLidar()
     handle_keyboard_input(keyboard.getKey(), robot, initialPose)
     step_counter += 1
 cv2.destroyAllWindows()

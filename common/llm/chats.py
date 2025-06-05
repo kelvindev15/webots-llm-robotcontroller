@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from langchain_core.messages.base import BaseMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
@@ -8,12 +8,12 @@ from common.utils.llm import create_sys_message, geminiAPIKey, getOpenAIKey
 
 
 class LLMChat(ABC):
-    def __init__(self, system_instruction: str = None):
+    def __init__(self):
         self.llm = None
         self.model_name = None
-        self.system_message = create_sys_message(
-            system_instruction) if system_instruction else None
-        self.chat = [self.system_message] if self.system_message else []
+        self.system_instruction = None
+        self.chat = []
+        self.clear_chat()
 
     def send_message(self, message: BaseMessage):
         self.__checkInitilization()
@@ -30,12 +30,25 @@ class LLMChat(ABC):
         self.__checkInitilization()
         return self.model_name
 
+    def set_system_instruction(self, system_instruction: str):
+        self.__checkInitilization()
+        self.system_instruction = system_instruction
+        self.clear_chat()
+
+    def clear_system_instruction(self):
+        self.__checkInitilization()
+        self.system_instruction = None
+        self.clear_chat()    
+    
     def get_system_instruction(self):
         self.__checkInitilization()
-        return self.system_message.content
-
+        return self.system_instruction
+    
     def clear_chat(self):
-        self.chat = [self.system_message] if self.system_message else []
+        if self.system_instruction is not None:
+            self.chat = [create_sys_message(self.system_instruction)]
+        else:
+            self.chat = []
 
     def __checkInitilization(self):
         if not self.llm:
@@ -43,8 +56,8 @@ class LLMChat(ABC):
 
 
 class GeminiChat(LLMChat):
-    def __init__(self, model_name="gemini-2.0-flash", system_instruction=None):
-        super().__init__(system_instruction)
+    def __init__(self, model_name="gemini-2.0-flash"):
+        super().__init__()
         self.model_name = model_name
         self.llm = ChatGoogleGenerativeAI(
             model=model_name,
@@ -57,8 +70,8 @@ class GeminiChat(LLMChat):
 
 
 class OllamaChat(LLMChat):
-    def __init__(self, model_name="llava", system_instruction=None):
-        super().__init__(system_instruction)
+    def __init__(self, model_name="llava"):
+        super().__init__()
         self.model_name = model_name
         self.llm = ChatOllama(
             model=model_name,
@@ -66,11 +79,11 @@ class OllamaChat(LLMChat):
         )       
 
 class OpenAIChat(LLMChat):
-    def __init__(self, model_name="gpt-4o-mini", system_instruction=None):
-        super().__init__(system_instruction)
+    def __init__(self, model_name="gpt-4o-mini"):
+        super().__init__()
         self.model_name = model_name
         self.llm = ChatOpenAI(
-            model="gpt-4o",
+            model=model_name,
             temperature=0,
             max_tokens=None,
             timeout=None,

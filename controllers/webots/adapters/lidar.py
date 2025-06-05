@@ -100,6 +100,13 @@ class WBLidar:
         """Get reversed range image from lidar"""
         return list(reversed(self.lidar.getRangeImage()))
     
+    def setEnablePointCloud(self, enabled: bool):
+        """Enable or disable point cloud"""
+        if enabled:
+            self.lidar.enablePointCloud()
+        else:
+            self.lidar.disablePointCloud()
+    
 class WBTiltLidar:
     def __init__(self, lidar: WBLidar, motor: WBMotor):
         self.lidar = lidar
@@ -117,4 +124,26 @@ class WBTiltLidar:
         self.motor.setPositionByPercentage(percent, onComplete)
 
     def getPositionPercent(self) -> float:
-        return self.motor.getPositionPercent()    
+        return self.motor.getPositionPercent()
+
+    def moveUp(self, onComplete: Callable[[None], None] = None):
+        velocity = -0.02*self.motor.maxVelocity
+        if (self.motor.getPosition() + velocity) < self.minTiltPosition:
+            self.stop()
+        else:
+            self.motor.setPosition(float('+inf'))
+            self.motor.setSpeed(velocity)
+
+    def moveDown(self, onComplete: Callable[[None], None] = None):
+        velocity = 0.02*self.motor.maxVelocity
+        if (self.motor.getPosition() + velocity) > self.maxTiltPosition:
+            self.stop()
+        else:
+            self.motor.setPosition(float('+inf'))
+            self.motor.setSpeed(velocity)
+
+    def stop(self):
+        self.motor.stop()
+
+    def setPointCloudEnabled(self, enabled: bool):
+        self.lidar.setEnablePointCloud(enabled)

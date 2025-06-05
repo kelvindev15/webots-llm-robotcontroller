@@ -26,7 +26,7 @@ def create_message(text: str, image: str = None):
             "text": text
         }
     ]
-    if image:
+    if image is not None:
         message_content.append({
             "type": "image_url",
             "image_url": {"url": f"data:image/jpeg;base64,{image}"},

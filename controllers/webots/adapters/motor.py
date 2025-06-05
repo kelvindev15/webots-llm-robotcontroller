@@ -26,7 +26,9 @@ class WBMotor():
         self.motor.setPosition(position)
 
     def getPositionPercent(self) -> float:
-        return (self.getPosition() - self.minPosition) / (self.maxPosition - self.minPosition)
+        print("Get position: ", self.getPosition())
+        position_range = self.maxPosition - self.minPosition
+        return (self.getPosition() - self.minPosition) / (position_range if position_range != 0 else 1.0)
 
     def setPositionByPercentage(self, percent: float, onComplete: Callable[[None], None] = None):
         position = self.minPosition + (self.maxPosition - self.minPosition) * percent
@@ -56,4 +58,4 @@ class WBMotor():
 
     @property
     def isRotational(self) -> bool:
-        return self.motor.getType() == constant("ROTATIONAL")    
+        return self.motor.getType() == constant("ROTATIONAL")   

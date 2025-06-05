@@ -17,11 +17,14 @@ class PR2Controller(WBRobotController):
         self.devices = devices
         self.camera = devices.CAMERA
         self.lidar = devices.BASE_LASER
+        print("Lidar FoV", np.rad2deg(self.lidar.lidar.getFov()))
+        print("Lidar Horizontal Resolution", self.lidar.lidar.getHorizontalResolution())
+        print("Camera Fov", np.rad2deg(self.camera.camera.getFov()))
         self.tiltLidar = devices.TILT_LIDAR
         self.wheelSystem = PR2WheelSystem(devices, eventManager)
         self.__initializeArms()
         self.eventManager = eventManager
-        self.devices.LASER_TILT_JOINT.setPositionByPercentage(1.0)
+        self.devices.TILT_LIDAR.setPointCloudEnabled(False)
         eventManager.subscribe(EventType.SIMULATION_STEP, self.__onSimulationStep)
         self.locked = False
         
@@ -35,8 +38,6 @@ class PR2Controller(WBRobotController):
         self.devices.HEAD_PAN_JOINT.setPositionByPercentage(0.5)
 
     def __initializeArms(self):
-        self.devices.LASER_TILT_JOINT.setPositionByPercentage(0.2)
-        
         self.devices.LEFT_SHOULDER_LIFT.setToMaxPosition()
         self.devices.RIGHT_SHOULDER_LIFT.setToMaxPosition()
         
@@ -88,6 +89,22 @@ class PR2Controller(WBRobotController):
                 self.tiltLidar.setPositionByPercentage(samples[index+1], onComplete=lambda: handler(index + 1))
         self.tiltLidar.setPositionByPercentage(samples[0], onComplete=lambda: handler(0))
 
+    def moveTiltLidarUp(self, onComplete=None):
+        if not self.locked:
+            self.tiltLidar.moveUp(onComplete)
+
+    def moveTiltLidarDown(self, onComplete=None):
+        if not self.locked:
+            self.tiltLidar.moveDown(onComplete)
+
+    def getTiltLidarPositionPercent(self):
+        if not self.locked:
+            return self.tiltLidar.getPositionPercent()
+        return None        
+
+    def stopTiltLidar(self):
+        if not self.locked:
+            self.tiltLidar.stop()
 
     def getFullLidarImage(self):
         return self.lidar.getImage()

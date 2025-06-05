@@ -22,7 +22,7 @@ def detectObjects(image):
     detections: List[ObjectDetection] = []
     for result in results:
         for box in result.boxes:
-            x, y, w, h = box.xywhn[0]
+            x, y, w, h = box.xywh[0]
             detections.append(ObjectDetection(
                 model.names[int(box.cls.item())], 
                 box.conf.item(), 
@@ -32,6 +32,13 @@ def detectObjects(image):
                 h.item())
             )        
     return detections
+
+def box_label(image, box, label, color, text_color):
+    x1, y1, x2, y2 = box
+    result = image.copy()
+    cv2.rectangle(result, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
+    cv2.putText(result, label, (int(x1) + 15, int(y1) + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 2)
+    return result
 
 def plotDetections(image):
     results = model(image, verbose=False)

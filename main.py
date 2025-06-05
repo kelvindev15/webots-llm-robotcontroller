@@ -62,9 +62,6 @@ robotKeyboardController.onKey(ord('A'), lambda: robot.rotateLeft(None))
 robotKeyboardController.onKey(ord('S'), lambda: robot.goBack(None))
 robotKeyboardController.onKey(ord('D'), lambda: robot.rotateRight(None))
 robotKeyboardController.onKey(ord('Q'), lambda: robot.stop())
-robotKeyboardController.onKey(ord('I'), lambda: print("Lidar is at position:", robot.tiltLidar.getPositionPercent()))
-
-
 
 boundingBoxPrompt = """
 Output the objects bounding boxes in the image in json format.

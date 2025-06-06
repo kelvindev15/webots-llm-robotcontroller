@@ -1,5 +1,5 @@
 import numpy as np
-import math
+from typing import List
 
 
 def rotateVector(vector, angle):
@@ -8,26 +8,19 @@ def rotateVector(vector, angle):
          [np.sin(angle), np.cos(angle)]])
     return np.dot(rotation_matrix, vector)
 
-
 def angleBetweenVectors(v1, v2):
-    return np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+    u = np.array(v1)
+    v = np.array(v2)
+    dot_product = np.dot(u, v)
 
+    dot_product = np.clip(dot_product, -1.0, 1.0)
 
-def gaussian(x, a, b, c):
-    return a*math.exp(- (x - b)**2/(2*(c**2)))
+    angle = np.arccos(dot_product)
 
-
-def calculateDistanceAccuracy(distance, a=1, b=2, c=1.5):
-    return gaussian(distance, a, b, c)
-
+    return angle  # in radians
 
 def normalizeVector(vector):
     return vector / np.linalg.norm(vector)
 
-
-def calculateDirectionAccuracy(direction, a=1, b=0, c=0.157):
-    return gaussian(direction, a, b, c)
-
-
-def calculateAccuracy(distance, direction):
-    return calculateDistanceAccuracy(distance) * calculateDirectionAccuracy(direction)
+def distanceBetweenPoints(p1: List[float], p2: List[float]):
+    return np.linalg.norm(np.array(p1) - np.array(p2))

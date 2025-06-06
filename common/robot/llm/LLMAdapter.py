@@ -32,10 +32,7 @@ class LLMAdapter:
         self.chat.clear_chat()
 
     def iterate(self, prompt, image) -> RobotAction:
-        logger.debug("Prompt: %s", prompt)
         response = self.chat.send_message(create_message(prompt, image))
-        logger.debug("Full LLM response: %s", response)
         action = json.loads(extractJSON(response))
-        logger.debug("Response JSON extract: %s", action)
         validate(action, self.responseSchema)
         return RobotAction(action["action"]["command"], float(action["action"]["parameters"]))        

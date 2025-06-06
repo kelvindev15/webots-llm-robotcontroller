@@ -15,6 +15,8 @@ import cv2
 import json
 import logging
 
+from simulation.sim import LLMObserver
+
 load_dotenv()
 rootLogger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG)
@@ -22,6 +24,7 @@ logging.basicConfig(level=logging.DEBUG)
 TIME_STEP = 64
 MAX_SPEED = 6.28
 eventManager = EventManager()
+llmObserver = LLMObserver(eventManager)
 supervisor = Supervisor()
 pr2Devices = PR2Devices(supervisor, eventManager, TIME_STEP)
 robot = PR2Controller(pr2Devices, eventManager)
@@ -30,7 +33,7 @@ ollamaChat = OllamaChat(model_name="gemma3:4b")
 openaiChat = OpenAIChat()
 robotChat = geminiChat
 robotChat.set_system_instruction(readSystemInstruction())
-llmController = LLMRobotController(robot, robotChat)
+llmController = LLMRobotController(robot, robotChat, eventManager)
 
 keyboard = Keyboard()
 keyboard.enable(TIME_STEP)
@@ -99,12 +102,10 @@ def llmBoundingBox():
     cv2.imshow("Camera", image)
     cv2.waitKey(1)
 
-
 simulationKeyboardController = KeyboardController()
 simulationKeyboardController.onKey(ord('P'), lambda: llmController.ask(readUserPrompt()))
 simulationKeyboardController.onKey(ord('L'), lambda: print("Front Lidar:", robot.getFrontLidarImage()))
 simulationKeyboardController.onKey(ord('B'), lambda: llmBoundingBox())
-
 
 def onStep(_: StepEventData):
     image = robot.getCameraImage()
@@ -115,7 +116,6 @@ def onStep(_: StepEventData):
     cv2.waitKey(1)
 
 # eventManager.subscribe(EventType.SIMULATION_STEP, onStep)
-
 step_counter = 0
 while supervisor.step(TIME_STEP) != -1:
     eventManager.notify(EventType.SIMULATION_STEP, StepEventData(step_counter))
@@ -123,7 +123,6 @@ while supervisor.step(TIME_STEP) != -1:
     simulationKeyboardController.execute(pressed_key)
     if not(robotKeyboardController.execute(pressed_key)):
         robot.stop()
-        #robot.stopTiltLidar()
     handle_keyboard_input(keyboard.getKey(), robot, initialPose)
     step_counter += 1
 cv2.destroyAllWindows()

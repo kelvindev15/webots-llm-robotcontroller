@@ -1,4 +1,5 @@
 from abc import ABC
+from langchain_core.rate_limiters import InMemoryRateLimiter
 from langchain_core.messages.base import BaseMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
@@ -6,6 +7,11 @@ from langchain_openai import ChatOpenAI
 
 from common.utils.llm import create_sys_message, geminiAPIKey, getOpenAIKey
 
+rate_limiter = InMemoryRateLimiter(
+    requests_per_second=1/6,  # 6 seconds per request
+    max_bucket_size=2,
+    check_every_n_seconds=1
+)
 
 class LLMChat(ABC):
     def __init__(self):
@@ -54,7 +60,6 @@ class LLMChat(ABC):
         if not self.llm:
             raise Exception("LLM not initialized")
 
-
 class GeminiChat(LLMChat):
     def __init__(self, model_name="gemini-2.0-flash"):
         super().__init__()
@@ -65,9 +70,9 @@ class GeminiChat(LLMChat):
             max_tokens=None,
             timeout=None,
             max_retries=2,
-            api_key=geminiAPIKey()
+            api_key=geminiAPIKey(),
+            rate_limiter=rate_limiter
         )
-
 
 class OllamaChat(LLMChat):
     def __init__(self, model_name="llava"):

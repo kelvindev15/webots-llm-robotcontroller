@@ -104,6 +104,7 @@ class PR2WheelSystem:
                 if completionHandler is not None:
                     completionHandler()  
         self.eventManager.subscribe(EventType.SIMULATION_STEP, handler)
+        # TODO: subscribe to an abort event to stop the movement if needed
         
     def __setWheelSpeeds(self, bl: float = 0.0, br: float = 0.0, fl: float = 0.0, fr: float = 0.0):
         self.wheels[WheelPosition.BACK_LEFT].setSpeed(bl * PR2Wheel.MAX_SPEED)

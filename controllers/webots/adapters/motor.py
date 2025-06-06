@@ -26,7 +26,6 @@ class WBMotor():
         self.motor.setPosition(position)
 
     def getPositionPercent(self) -> float:
-        print("Get position: ", self.getPosition())
         position_range = self.maxPosition - self.minPosition
         return (self.getPosition() - self.minPosition) / (position_range if position_range != 0 else 1.0)
 
@@ -39,7 +38,8 @@ class WBMotor():
                 onComplete()
                 self.eventManager.unsubscribe(handler)
         if onComplete is not None:
-            self.eventManager.subscribe(EventType.SIMULATION_STEP, handler)        
+            self.eventManager.subscribe(EventType.SIMULATION_STEP, handler)
+            # TODO: subscribe to an abort event to stop the motor if needed        
 
     def __fuzzyEquals(self, a: float, b: float, epsilon: float = 0.01) -> bool:
         return abs(a - b) < epsilon

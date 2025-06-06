@@ -37,6 +37,7 @@ class WBMotor():
         self.setSpeed(self.maxVelocity)
         def handler(_: EventData):
             if self.__fuzzyEquals(self.getPositionPercent(), percent):
+                self.eventManager.unsubscribe(abort_handler)
                 onComplete()
                 self.eventManager.unsubscribe(handler)
         if onComplete is not None:

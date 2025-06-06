@@ -11,6 +11,7 @@ class EventType(Enum):
     LLM_ACTION_FAILED = "llm_action_failed"
     LLM_MAX_ITERATIONS_REACHED = "llm_max_iterations_reached"
     ABORT = "abort"
+    LLM_SESSION_COMPLETED = "llm_session_completed"
 
 @dataclass
 class EventData:

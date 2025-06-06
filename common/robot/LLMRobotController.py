@@ -7,19 +7,9 @@ from common.robot.llm.LLMPlan import LLMPlan
 from common.robot.llm.ActionAdapter import ActionAdapter
 from common.robot.llm.LLMAdapter import LLMAdapter
 from controllers.webots.pr2.PR2Controller import PR2Controller
-import logging
-import sys
 
 from simulation.events import EventType
 from simulation.observers import EventManager
-
-logger = logging.getLogger(__name__)
-
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
 
 class LLMRobotController:
 
@@ -45,35 +35,45 @@ class LLMRobotController:
         return view_description if isinstance(self.robot, PR2Controller) else "Current view:"
     
     def __onAbort(self, event_data):
+        self.abort = True
+
+    def __complete(self):
         if self.locked:
-            self.abort = True
+            self.locked = False
+            self.eventManager.notify(EventType.LLM_FINISH, {"prompt": "LLM control completed"})
 
     def ask(self, prompt: str, maxIterations: int = 20) -> LLMPlan:
         self.abort = False
         if self.locked:
             return None
         self.locked = True
-        self.eventManager.notify(EventType.LLM_START, {"prompt": prompt})
+        self.eventManager.notify(EventType.LLM_START, {"model": self.chat.model_name, "prompt": prompt})
         self.llmAdapter.clear()
         iteration_count = 0
         def handler(prompt: str):
             nonlocal iteration_count
             if iteration_count > 0:
-                self.eventManager.notify(EventType.LLM_ACTION_COMPLETED, {})
+                # TODO: add action to parameters
+                self.eventManager.notify(EventType.LLM_ACTION_COMPLETED, {"prompt": prompt})
             if self.abort:
                 self.locked = False
-                print("LLMRobotController: Aborting LLM control")
-                return    
+                return
+            elif iteration_count >= maxIterations:
+                # TODO: add correct reason to parameters
+                self.eventManager.notify(EventType.LLM_MAX_ITERATIONS_REACHED, {"prompt": prompt})
+                self.locked = False
+                return
+            
             iteration_count += 1
             action = self.llmAdapter.iterate(prompt, toBase64Image(self.robot.getCameraImage()))
             if action.command != "COMPLETE":
                 success = self.actionAdapter.execute(action, lambda: handler(self.__buildSceneDescription()))
                 if not success:
                     self.eventManager.notify(EventType.LLM_ACTION_FAILED, {"action": action})
-                if iteration_count >= maxIterations:
-                    self.eventManager.notify(EventType.LLM_MAX_ITERATIONS_REACHED, {"prompt": prompt})
+                    self.locked = False
+                    return
             else:
-                self.locked = False
-                self.eventManager.notify(EventType.LLM_FINISH, {"prompt": prompt})
+                self.__complete()
+                return
         handler(prompt)
     

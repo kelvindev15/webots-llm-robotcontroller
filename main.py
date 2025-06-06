@@ -24,8 +24,8 @@ logging.basicConfig(level=logging.DEBUG)
 TIME_STEP = 64
 MAX_SPEED = 6.28
 eventManager = EventManager()
-llmObserver = LLMObserver(eventManager)
 supervisor = Supervisor()
+llmObserver = LLMObserver(supervisor,eventManager)
 pr2Devices = PR2Devices(supervisor, eventManager, TIME_STEP)
 robot = PR2Controller(pr2Devices, eventManager)
 geminiChat = GeminiChat()
@@ -116,6 +116,7 @@ def onStep(_: StepEventData):
     cv2.waitKey(1)
 
 # eventManager.subscribe(EventType.SIMULATION_STEP, onStep)
+eventManager.subscribe(EventType.LLM_SESSION_COMPLETED, lambda session: print("LLM Session completed:", session.toJSON()))
 step_counter = 0
 while supervisor.step(TIME_STEP) != -1:
     eventManager.notify(EventType.SIMULATION_STEP, StepEventData(step_counter))

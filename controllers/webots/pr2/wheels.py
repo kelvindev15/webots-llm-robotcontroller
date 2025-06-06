@@ -97,6 +97,13 @@ class PR2WheelSystem:
     def reach(self, getValue, targetValue, deltaToCurrentValue, completionHandler=None):
         initialValue = getValue()
         starting_step = None
+        def onAbort(e: EventData):
+            self.stop()
+            self.eventManager.unsubscribe(handler)
+            self.eventManager.unsubscribe(onAbort)
+            if completionHandler is not None:
+                completionHandler()
+        self.eventManager.subscribe(EventType.ABORT, onAbort)
         def handler(e: StepEventData):
             nonlocal starting_step
             if starting_step is None:
@@ -111,14 +118,10 @@ class PR2WheelSystem:
                 self.stop()
                 self.eventManager.unsubscribe(handler)
                 if completionHandler is not None:
+                    self.eventManager.unsubscribe(onAbort)
                     completionHandler()  
         self.eventManager.subscribe(EventType.SIMULATION_STEP, handler)
-        def onAbort(e: EventData):
-            self.stop()
-            self.eventManager.unsubscribe(handler)
-            if completionHandler is not None:
-                completionHandler()
-        self.eventManager.subscribe(EventType.ABORT, onAbort)
+        
 
     def __setWheelSpeeds(self, bl: float = 0.0, br: float = 0.0, fl: float = 0.0, fr: float = 0.0):
         self.wheels[WheelPosition.BACK_LEFT].setSpeed(bl * PR2Wheel.MAX_SPEED)

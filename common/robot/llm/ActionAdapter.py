@@ -23,4 +23,5 @@ class ActionAdapter:
             self.robot.stop()
             return True
         else:
+            print("ActionAdapter: Unknown command", command)
             return False

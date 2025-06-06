@@ -2,12 +2,14 @@ from controllers.webots.adapters.motor import WBMotor
 from enum import Enum
 import numpy as np
 from controllers.webots.pr2.devices import PR2Devices
+from simulation.events import StepEventData
 from simulation.observers import EventManager, EventData, EventType
 
 class PR2Wheel():
     WHEEL_RADIUS = 0.08
     CENTER_TO_WHEEL = 0.318
     MAX_SPEED = 6
+    MAX_ACTION_STEP_DURATION = 315
 
     def __init__(self, l_wheel: WBMotor, r_wheel: WBMotor):
         self.wheels = {
@@ -94,7 +96,14 @@ class PR2WheelSystem:
 
     def reach(self, getValue, targetValue, deltaToCurrentValue, completionHandler=None):
         initialValue = getValue()
-        def handler(_: EventData):
+        starting_step = None
+        def handler(e: StepEventData):
+            nonlocal starting_step
+            if starting_step is None:
+                starting_step = e.step
+            if e.step - starting_step > PR2Wheel.MAX_ACTION_STEP_DURATION:
+                self.eventManager.unsubscribe(handler)
+                self.eventManager.notify(EventType.ABORT, {"reason": "Movement timed out"}) 
             currentValue = getValue()
             delta = abs(currentValue - initialValue)
             actualValue = deltaToCurrentValue(delta)
@@ -104,8 +113,13 @@ class PR2WheelSystem:
                 if completionHandler is not None:
                     completionHandler()  
         self.eventManager.subscribe(EventType.SIMULATION_STEP, handler)
-        # TODO: subscribe to an abort event to stop the movement if needed
-        
+        def onAbort(e: EventData):
+            self.stop()
+            self.eventManager.unsubscribe(handler)
+            if completionHandler is not None:
+                completionHandler()
+        self.eventManager.subscribe(EventType.ABORT, onAbort)
+
     def __setWheelSpeeds(self, bl: float = 0.0, br: float = 0.0, fl: float = 0.0, fr: float = 0.0):
         self.wheels[WheelPosition.BACK_LEFT].setSpeed(bl * PR2Wheel.MAX_SPEED)
         self.wheels[WheelPosition.BACK_RIGHT].setSpeed(br * PR2Wheel.MAX_SPEED)

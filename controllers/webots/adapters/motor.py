@@ -4,6 +4,8 @@ from controller.constants import constant
 from simulation.observers import EventManager, EventData, EventType
 from typing import Callable
 
+MAX_ACTION_STEP_DURATION = 315
+
 class WBMotor():
     def __init__(self, motor: Motor, timeStep: int, eventManager: EventManager):
         self.motor: Motor = motor
@@ -39,7 +41,12 @@ class WBMotor():
                 self.eventManager.unsubscribe(handler)
         if onComplete is not None:
             self.eventManager.subscribe(EventType.SIMULATION_STEP, handler)
-            # TODO: subscribe to an abort event to stop the motor if needed        
+            def abort_handler(_: EventData):
+                self.eventManager.unsubscribe(handler)
+                self.eventManager.unsubscribe(abort_handler)
+                self.stop()
+                onComplete()
+            self.eventManager.subscribe(EventType.ABORT, abort_handler)
 
     def __fuzzyEquals(self, a: float, b: float, epsilon: float = 0.01) -> bool:
         return abs(a - b) < epsilon

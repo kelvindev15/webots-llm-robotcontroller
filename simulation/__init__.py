@@ -11,22 +11,22 @@ class RobotPosition:
         return f"RobotPosition({self.x}, {self.y}, {self.heading})"
     
 class RobotTarget:
-    def __init__(self, name: str, x: float, y: float):
+    def __init__(self, name: str, x: float, y: float, score: float = 0.0):
         self.name = name
         self.x = x
         self.y = y
-        self.score = 0.0
+        self.score = score
 
     def __repr__(self):
         return f"RobotTarget({self.name}, {self.x}, {self.y}, {self.score})"
     
 class RobotAction:
-    def __init__(self, name: str, parameters: dict):
+    def __init__(self, name: str, parameter: float):
         self.name = name
-        self.parameters = parameters
+        self.parameter = parameter
 
     def __repr__(self):
-        return f"RobotAction({self.name}, {self.parameters})"    
+        return f"RobotAction({self.name}, {self.parameter})"
 
 class LLMSession:
     def __init__(self, model: str, prompt: str):
@@ -55,7 +55,7 @@ class LLMSession:
             "prompt": self.prompt,
             "robotPositions": [ {"x": pos.x, "y": pos.y, "heading": pos.heading} for pos in self.robotPositions],
             "targets": [[{"name": target.name, "x": target.x, "y": target.y, "score": target.score} for target in targetList] for targetList in self.targets],
-            "actions": [ {"name": action.name, "parameters": action.parameters} for action in self.actions],
+            "actions": [ {"name": action.name, "parameters": action.parameter} for action in self.actions],
             "completed": self.completed,
             "aborted": self.aborted,
             "abortionReason": self.abortionReason

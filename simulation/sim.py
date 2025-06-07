@@ -1,8 +1,9 @@
-from simulation import LLMSession, RobotPosition, RobotTarget
+from common.robot.llm.RobotAction import RobotAction as Action
+from simulation import LLMSession, RobotAction, RobotPosition, RobotTarget
 from simulation.events import EventType
 from simulation.observers import EventManager
 from controller import Supervisor
-from common.utils.environment import getPositionOf, getDirectionVersorOf, SceneObjects
+from common.utils.environment import getPositionOf, getDirectionVersorOf, SceneObjects, getScore
 
 class LLMObserver():
     def __init__(self, supervisor: Supervisor, eventManager: EventManager):
@@ -17,7 +18,7 @@ class LLMObserver():
         self.currentSession = None
 
     def __getTargets(self):
-        return list(map(lambda obj: RobotTarget(obj.name, getPositionOf(self.supervisor, obj)["x"], getPositionOf(self.supervisor, obj)["y"]), SceneObjects))
+        return list(map(lambda obj: RobotTarget(obj.name, getPositionOf(self.supervisor, obj)["x"], getPositionOf(self.supervisor, obj)["y"], getScore(self.supervisor, obj)), SceneObjects))
 
     def __recordSessionStatus(self):
         if self.currentSession is not None:
@@ -32,8 +33,10 @@ class LLMObserver():
         self.__recordSessionStatus()
         
     def __onActionCompleted(self, data):
-        print("LLMObserver: Action completed")
+        action: Action = data.get("action")
+        print("LLMObserver: Action completed", data)
         self.__recordSessionStatus()
+        self.currentSession.addAction(RobotAction(action.command, action.parameter))
 
     def __onFinish(self, data):
         print("LLMObserver: LLM ended control")
@@ -42,13 +45,13 @@ class LLMObserver():
 
     def __onActionFailed(self, data):
         print("LLMObserver: Action failed", data)
-        self.eventManager.notify(EventType.ABORT, {"reason": "Action failed"})
+        self.eventManager.notify(EventType.ABORT, {"reason": f"Action {data} failed"})
 
     def __onMaxIterationsReached(self, data):
         print("LLMObserver: Maximum iterations reached")
-        self.eventManager.notify(EventType.ABORT, {"reason": "Max iterations reached"})    
+        self.eventManager.notify(EventType.ABORT, {"reason": f"Max iterations reached ({data.get('iterations', 'Unknown')})"})
 
     def __onAbort(self, data):
         print("LLMObserver: LLM control aborted", data)
-        self.currentSession.markAborted("LLM control aborted")
+        self.currentSession.markAborted(data.get("reason", "Unknown reason"))
         self.eventManager.notify(EventType.LLM_SESSION_COMPLETED, self.currentSession)

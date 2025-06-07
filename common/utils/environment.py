@@ -38,6 +38,8 @@ def getDirectionVersorOf(supervisor: Supervisor, object: SceneObjects):
         return { "x": versor[0, 0], "y": versor[1, 0] }
     
 def getAngleBetweenRobotAndObject(supervisor: Supervisor, object: SceneObjects):
+    if object == SceneObjects.ROBOT:
+        return 0
     robot = supervisor.getFromDef(SceneObjects.ROBOT.value)
     target = supervisor.getFromDef(object.value)
     
@@ -49,3 +51,19 @@ def getAngleBetweenRobotAndObject(supervisor: Supervisor, object: SceneObjects):
         vector_to_object = vector_to_object / np.linalg.norm(vector_to_object)  # Normalize
         return angleBetweenVectors([robot_direction["x"], robot_direction["y"]], vector_to_object)
     return None
+
+def distanceScore(supervisor: Supervisor, object1: SceneObjects, object2: SceneObjects):
+    distance = distanceBetween(supervisor, object1, object2)
+    if distance <= 2.5:
+        return 1
+    else:
+        return 1.5 ** -(distance - 2.5)
+    
+def headingScore(supervisor: Supervisor, object: SceneObjects):
+    angle = getAngleBetweenRobotAndObject(supervisor, object)
+    return (np.pi - angle)/np.pi if angle is not None else 0
+
+def getScore(supervisor: Supervisor, object: SceneObjects):
+    distance = distanceScore(supervisor, SceneObjects.ROBOT, object)
+    heading = headingScore(supervisor, object)
+    return distance * heading

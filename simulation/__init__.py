@@ -29,11 +29,13 @@ class RobotAction:
         return f"RobotAction({self.name}, {self.parameter})"
 
 class LLMSession:
-    def __init__(self, model: str, prompt: str):
+    def __init__(self, model: str, prompt: str, id: str = None):
+        self.id = id
         self.model = model
         self.prompt = prompt
         self.robotPositions: List[RobotPosition] = []
-        self.targets: List[List[RobotTarget]] = []
+        self.targets: List[str] = []
+        self.scores = []
         self.actions: List[RobotAction] = []
         self.completed = False
         self.aborted = False
@@ -42,8 +44,11 @@ class LLMSession:
     def addRobotPosition(self, position: RobotPosition):
         self.robotPositions.append(position)
 
-    def addTargets(self, targets: List[RobotTarget]):
-        self.targets.append(targets)
+    def setTargets(self, targets: List[str]):
+        self.targets = targets
+
+    def addScores(self, scores):
+        self.scores.append(scores)
 
     def addAction(self, action: RobotAction):
         self.actions.append(action)
@@ -51,10 +56,12 @@ class LLMSession:
     def asObject(self):
         print(self.targets)
         return {
+            "id": self.id,
             "model": self.model,
             "prompt": self.prompt,
             "robotPositions": [ {"x": pos.x, "y": pos.y, "heading": pos.heading} for pos in self.robotPositions],
-            "targets": [[{"name": target.name, "x": target.x, "y": target.y, "score": target.score} for target in targetList] for targetList in self.targets],
+            "targets": self.targets,
+            "scores": self.scores,
             "actions": [ {"name": action.name, "parameters": action.parameter} for action in self.actions],
             "completed": self.completed,
             "aborted": self.aborted,

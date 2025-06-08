@@ -1,5 +1,6 @@
 from common.llm.chats import GeminiChat, OllamaChat, OpenAIChat
 from common.robot.LLMRobotController import LLMRobotController
+from common.utils.environment import getRobotPose, setRobotPose
 from controllers.webots.pr2.PR2Controller import PR2Controller
 from controllers.webots.pr2.devices import PR2Devices
 from controllers.webots.keyboard import KeyboardController
@@ -9,11 +10,13 @@ from common.utils.images import box_label, detectObjects, toBase64Image
 from common.utils.llm import create_message
 from common.utils.misc import extractJSON
 from dotenv import load_dotenv
+from simulation import LLMSession
 from simulation.observers import EventManager
 from simulation.events import EventType, StepEventData
 import cv2
 import json
 import logging
+import datetime
 
 from simulation.sim import LLMObserver
 
@@ -102,10 +105,32 @@ def llmBoundingBox():
     cv2.imshow("Camera", image)
     cv2.waitKey(1)
 
+def multipleSimulation():
+    with open("simulation_prompts.txt", "r") as file:
+        prompts = file.readlines()
+        pose = getRobotPose(supervisor)
+    n_experiments = len(prompts)
+    current_experiment = 0
+    def next_experiment(_):
+        nonlocal current_experiment
+        nonlocal pose
+        current_experiment += 1
+        if current_experiment < n_experiments:
+            setRobotPose(supervisor, pose)
+            supervisor.step(TIME_STEP)
+            print(f"Running experiment {current_experiment + 1}/{n_experiments}")
+            llmController.ask(prompts[current_experiment].strip(), maxIterations=30)
+        else:
+            print("All experiments completed.")
+            eventManager.unsubscribe(next_experiment)
+    eventManager.subscribe(EventType.LLM_SESSION_COMPLETED, next_experiment)
+    print(f"Running experiment {current_experiment + 1}/{n_experiments}")
+    llmController.ask(prompts[current_experiment].strip(), maxIterations=30)
+        
 simulationKeyboardController = KeyboardController()
 simulationKeyboardController.onKey(ord('P'), lambda: llmController.ask(readUserPrompt()))
 simulationKeyboardController.onKey(ord('L'), lambda: print("Front Lidar:", robot.getFrontLidarImage()))
-simulationKeyboardController.onKey(ord('B'), lambda: llmBoundingBox())
+simulationKeyboardController.onKey(ord('B'), lambda: multipleSimulation())
 
 def onStep(_: StepEventData):
     image = robot.getCameraImage()
@@ -116,7 +141,13 @@ def onStep(_: StepEventData):
     cv2.waitKey(1)
 
 # eventManager.subscribe(EventType.SIMULATION_STEP, onStep)
-eventManager.subscribe(EventType.LLM_SESSION_COMPLETED, lambda session: print("LLM Session completed:", session.toJSON()))
+def save_session(session: LLMSession):
+    # create a YYYY_MM-DD_HH-MM-SS format for the session ID
+    filename = datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
+    with open(f"experiments/experiment_{filename}.json", "w") as file:
+        json.dump(session.asObject(), file, indent=4)
+    print("Session saved:", session.id)
+eventManager.subscribe(EventType.LLM_SESSION_COMPLETED, save_session)
 step_counter = 0
 while supervisor.step(TIME_STEP) != -1:
     eventManager.notify(EventType.SIMULATION_STEP, StepEventData(step_counter))

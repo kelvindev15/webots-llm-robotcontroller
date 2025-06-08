@@ -67,3 +67,15 @@ def getScore(supervisor: Supervisor, object: SceneObjects):
     distance = distanceScore(supervisor, SceneObjects.ROBOT, object)
     heading = headingScore(supervisor, object)
     return distance * heading
+
+def getRobotPose(supervisor: Supervisor):
+    position = supervisor.getSelf().getField("translation").getSFVec3f()
+    rotation = supervisor.getSelf().getField("rotation").getSFRotation()
+    return {
+        "position": position,
+        "rotation": rotation
+    }
+
+def setRobotPose(supervisor: Supervisor, pose):
+    supervisor.getSelf().getField("translation").setSFVec3f(pose["position"])
+    supervisor.getSelf().getField("rotation").setSFRotation(pose["rotation"])

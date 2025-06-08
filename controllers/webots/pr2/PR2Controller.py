@@ -17,9 +17,6 @@ class PR2Controller(WBRobotController):
         self.devices = devices
         self.camera = devices.CAMERA
         self.lidar = devices.BASE_LASER
-        print("Lidar FoV", np.rad2deg(self.lidar.lidar.getFov()))
-        print("Lidar Horizontal Resolution", self.lidar.lidar.getHorizontalResolution())
-        print("Camera Fov", np.rad2deg(self.camera.camera.getFov()))
         self.tiltLidar = devices.TILT_LIDAR
         self.wheelSystem = PR2WheelSystem(devices, eventManager)
         self.__initializeArms()

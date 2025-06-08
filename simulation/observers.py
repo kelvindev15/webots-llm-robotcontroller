@@ -14,9 +14,8 @@ class EventManager:
         for _, observers in self._observers.items():
             if handler in observers:
                 observers.remove(handler)
-                break
 
     def notify(self, eventType: EventType, data: EventData):
-        for observer in self._observers[eventType]:
+        for observer in self._observers.get(eventType, []):
             observer(data)
             

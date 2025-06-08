@@ -16,6 +16,7 @@ class LLMAdapter:
             "properties": {
                 "goal": { "type": "string" },
                 "scene_description": { "type": "string" },
+                "reasoning": { "type": "string" },
                 "action": {
                     "type": "object",
                     "properties": {
@@ -25,7 +26,7 @@ class LLMAdapter:
                     "required": ["command", "parameters"],
                 }
             },
-            "required": ["goal", "scene_description", "action"],
+            "required": ["goal", "scene_description", "reasoning", "action"],
         }
 
     def clear(self):

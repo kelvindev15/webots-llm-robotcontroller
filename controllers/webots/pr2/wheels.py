@@ -1,3 +1,4 @@
+from common.robot.llm.RobotAction import RobotAction
 from controllers.webots.adapters.motor import WBMotor
 from enum import Enum
 import numpy as np
@@ -101,15 +102,15 @@ class PR2WheelSystem:
             self.stop()
             self.eventManager.unsubscribe(handler)
             self.eventManager.unsubscribe(onAbort)
-            if completionHandler is not None:
-                completionHandler()
         self.eventManager.subscribe(EventType.ABORT, onAbort)
         def handler(e: StepEventData):
             nonlocal starting_step
             if starting_step is None:
                 starting_step = e.step
             if e.step - starting_step > PR2Wheel.MAX_ACTION_STEP_DURATION:
-                self.eventManager.unsubscribe(handler)
+                onAbort(e)
+                if completionHandler is not None:
+                    completionHandler()
                 self.eventManager.notify(EventType.ABORT, {"reason": "Movement timed out"}) 
             currentValue = getValue()
             delta = abs(currentValue - initialValue)

@@ -1,9 +1,10 @@
+import numpy as np
 from common.robot.llm.RobotAction import RobotAction as Action
 from simulation import LLMSession, RobotAction, RobotPosition, RobotTarget
 from simulation.events import EventType
 from simulation.observers import EventManager
 from controller import Supervisor
-from common.utils.environment import getPositionOf, getDirectionVersorOf, SceneObjects, getScore
+from common.utils.environment import distanceBetween, getAngleBetweenRobotAndObject, getPositionOf, getDirectionVersorOf, SceneObjects, getScore
 
 class LLMObserver():
     def __init__(self, supervisor: Supervisor, eventManager: EventManager):
@@ -17,19 +18,29 @@ class LLMObserver():
         self.eventManager.subscribe(EventType.LLM_ACTION_FAILED, self.__onActionFailed)
         self.currentSession = None
 
-    def __getTargets(self):
-        return list(map(lambda obj: RobotTarget(obj.name, getPositionOf(self.supervisor, obj)["x"], getPositionOf(self.supervisor, obj)["y"], getScore(self.supervisor, obj)), SceneObjects))
+    def __getScores(self):
+        scores = {}
+        for obj in SceneObjects:
+            if obj == SceneObjects.ROBOT:
+                continue
+            scores[obj.value] = { 
+                "score": getScore(self.supervisor, obj),
+                "distance": distanceBetween(self.supervisor, SceneObjects.ROBOT, obj),
+                "angle": np.rad2deg(getAngleBetweenRobotAndObject(self.supervisor, obj))
+            }
+        return scores
 
     def __recordSessionStatus(self):
         if self.currentSession is not None:
             heading = getDirectionVersorOf(self.supervisor, SceneObjects.ROBOT)
             position = getPositionOf(self.supervisor, SceneObjects.ROBOT)
             self.currentSession.addRobotPosition(RobotPosition(position['x'], position['y'], heading))
-            self.currentSession.addTargets(self.__getTargets())
+            self.currentSession.addScores(self.__getScores())
 
     def __onStart(self, data):
         print("LLMObserver: LLM began control", data)
-        self.currentSession = LLMSession(data.get("model"), data.get("prompt"))
+        self.currentSession = LLMSession(data.get("model"), data.get("prompt"), id=data.get("experiment_id"))
+        self.currentSession.setTargets(list(map(lambda x: x.value, SceneObjects)))
         self.__recordSessionStatus()
         
     def __onActionCompleted(self, data):

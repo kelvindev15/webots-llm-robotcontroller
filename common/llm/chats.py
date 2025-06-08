@@ -1,4 +1,5 @@
 from abc import ABC
+import langsmith as ls
 from langchain_core.rate_limiters import InMemoryRateLimiter
 from langchain_core.messages.base import BaseMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -19,10 +20,15 @@ class LLMChat(ABC):
         self.model_name = None
         self.system_instruction = None
         self.chat = []
+        self.chat_id = None
         self.clear_chat()
-
-    def send_message(self, message: BaseMessage):
+        
+    @ls.traceable()
+    def send_message(self, message: BaseMessage):    
         self.__checkInitilization()
+        rt = ls.get_current_run_tree()
+        rt.metadata["experiment_id"] = self.chat_id
+        rt.tags.extend(["WEBOTS"])
         self.chat.append(message)
         answer = self.llm.invoke(self.chat)
         self.chat.append(answer)
@@ -40,6 +46,10 @@ class LLMChat(ABC):
         self.__checkInitilization()
         self.system_instruction = system_instruction
         self.clear_chat()
+
+    def set_chat_id(self, chat_id: str):
+        self.__checkInitilization()
+        self.chat_id = chat_id
 
     def clear_system_instruction(self):
         self.__checkInitilization()
@@ -66,7 +76,7 @@ class GeminiChat(LLMChat):
         self.model_name = model_name
         self.llm = ChatGoogleGenerativeAI(
             model=model_name,
-            temperature=0,
+            temperature=0.3,
             max_tokens=None,
             timeout=None,
             max_retries=2,

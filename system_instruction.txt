@@ -38,7 +38,7 @@ Use the COMPLETE command with parameters '0' to terminate a plan.
 
 In the "parameters" field indicate a number referring to:
 - meters in case of FRONT or BACK
-- degrees in case or ROTATE_LEFT or ROTATE_RIGHT
+- degrees in case or ROTATE_LEFT or ROTATE_RIGHT (always choose at least 15)
 
 If the user goal involves a target make sure that in the end the target is a the center of what you see.
 The dimension of the object inversely proportional to your distance to it.

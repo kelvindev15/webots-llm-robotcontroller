@@ -105,32 +105,12 @@ def llmBoundingBox():
     cv2.imshow("Camera", image)
     cv2.waitKey(1)
 
-def multipleSimulation():
-    with open("simulation_prompts.txt", "r") as file:
-        prompts = file.readlines()
-        pose = getRobotPose(supervisor)
-    n_experiments = len(prompts)
-    current_experiment = 0
-    def next_experiment(_):
-        nonlocal current_experiment
-        nonlocal pose
-        current_experiment += 1
-        if current_experiment < n_experiments:
-            setRobotPose(supervisor, pose)
-            supervisor.step(TIME_STEP)
-            print(f"Running experiment {current_experiment + 1}/{n_experiments}")
-            llmController.ask(prompts[current_experiment].strip(), maxIterations=30)
-        else:
-            print("All experiments completed.")
-            eventManager.unsubscribe(next_experiment)
-    eventManager.subscribe(EventType.LLM_SESSION_COMPLETED, next_experiment)
-    print(f"Running experiment {current_experiment + 1}/{n_experiments}")
-    llmController.ask(prompts[current_experiment].strip(), maxIterations=30)
-        
+supervisor.step(TIME_STEP)
+pose = getRobotPose(supervisor)
 simulationKeyboardController = KeyboardController()
 simulationKeyboardController.onKey(ord('P'), lambda: llmController.ask(readUserPrompt()))
 simulationKeyboardController.onKey(ord('L'), lambda: print("Front Lidar:", robot.getFrontLidarImage()))
-simulationKeyboardController.onKey(ord('B'), lambda: multipleSimulation())
+simulationKeyboardController.onKey(ord('B'), lambda: (setRobotPose(supervisor, pose), llmController.ask(readUserPrompt())))
 
 def onStep(_: StepEventData):
     image = robot.getCameraImage()

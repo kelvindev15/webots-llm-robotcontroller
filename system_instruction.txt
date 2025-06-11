@@ -20,7 +20,7 @@ Here's the general workflow:
 
 Here's how you should format the output:
 
-```
+```json
 {
     "goal": str,
     "reasoning": str,
@@ -31,6 +31,8 @@ Here's how you should format the output:
     }
 }
 ```
+
+Make sure you put the json inside the "```json ```" block.
 
 Use the "reasoning" field to reason about you next action (Think step-by-step, Also consider your previous reaonings).
 Use the "scene_description" field to describe what you see in the picture.

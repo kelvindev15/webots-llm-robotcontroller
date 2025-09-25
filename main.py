@@ -1,6 +1,8 @@
 from common.llm.chats import GeminiChat, OllamaChat, OpenAIChat
 from common.robot.LLMRobotController import LLMRobotController
 from common.utils.environment import getRobotPose, setRobotPose
+from controllers.webots.khepera.KhepheraController import KhepheraController
+from controllers.webots.khepera.devices import KhepheraDevices
 from controllers.webots.pr2.PR2Controller import PR2Controller
 from controllers.webots.pr2.devices import PR2Devices
 from controllers.webots.keyboard import KeyboardController
@@ -15,14 +17,11 @@ from simulation.observers import EventManager
 from simulation.events import EventType, StepEventData
 import cv2
 import json
-import logging
 import datetime
 
 from simulation.sim import LLMObserver
 
 load_dotenv()
-rootLogger = logging.getLogger()
-logging.basicConfig(level=logging.DEBUG)
 
 TIME_STEP = 64
 MAX_SPEED = 6.28
@@ -30,11 +29,13 @@ eventManager = EventManager()
 supervisor = Supervisor()
 llmObserver = LLMObserver(supervisor,eventManager)
 pr2Devices = PR2Devices(supervisor, eventManager, TIME_STEP)
+# khepheraDevices = KhepheraDevices(supervisor, eventManager, TIME_STEP)
 robot = PR2Controller(pr2Devices, eventManager)
+# robot = KhepheraController(khepheraDevices, eventManager)
 geminiChat = GeminiChat()
 ollamaChat = OllamaChat(model_name="gemma3:4b")
-openaiChat = OpenAIChat()
-robotChat = geminiChat
+openaiChat = OpenAIChat(model_name="gpt-4o-mini")
+robotChat = openaiChat
 robotChat.set_system_instruction(readSystemInstruction())
 llmController = LLMRobotController(robot, robotChat, eventManager)
 

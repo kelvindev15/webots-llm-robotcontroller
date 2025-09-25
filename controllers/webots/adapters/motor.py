@@ -1,10 +1,13 @@
+import numpy as np
 from controller.motor import Motor
 from controller.position_sensor import PositionSensor
 from controller.constants import constant
+from simulation.events import StepEventData
 from simulation.observers import EventManager, EventData, EventType
 from typing import Callable
 
 MAX_ACTION_STEP_DURATION = 315
+TOLERANCE = 0.05
 
 class WBMotor():
     def __init__(self, motor: Motor, timeStep: int, eventManager: EventManager):
@@ -54,6 +57,34 @@ class WBMotor():
 
     def getPosition(self) -> float:
         return self.sensor.getValue()
+    
+    def reach(self, targetValue, deltaToCurrentValue, completionHandler=None):
+        initialValue = self.getPosition()
+        starting_step = None
+        def onAbort(e: EventData):
+            self.stop()
+            self.eventManager.unsubscribe(handler)
+            self.eventManager.unsubscribe(onAbort)
+        self.eventManager.subscribe(EventType.ABORT, onAbort)
+        def handler(e: StepEventData):
+            nonlocal starting_step
+            if starting_step is None:
+                starting_step = e.step
+            if e.step - starting_step > MAX_ACTION_STEP_DURATION:
+                onAbort(e)
+                if completionHandler is not None:
+                    completionHandler()
+                self.eventManager.notify(EventType.ABORT, {"reason": "Movement timed out"}) 
+            currentValue = self.getPosition()
+            delta = abs(currentValue - initialValue)
+            actualValue = deltaToCurrentValue(delta)
+            if abs(actualValue - targetValue) < TOLERANCE * 2:
+                self.stop()
+                self.eventManager.unsubscribe(handler)
+                if completionHandler is not None:
+                    self.eventManager.unsubscribe(onAbort)
+                    completionHandler()        
+        self.eventManager.subscribe(EventType.SIMULATION_STEP, handler)
 
     def stop(self):
         self.motor.setVelocity(0)

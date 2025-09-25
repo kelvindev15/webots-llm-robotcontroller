@@ -79,3 +79,4 @@ def getRobotPose(supervisor: Supervisor):
 def setRobotPose(supervisor: Supervisor, pose):
     supervisor.getSelf().getField("translation").setSFVec3f(pose["position"])
     supervisor.getSelf().getField("rotation").setSFRotation(pose["rotation"])
+    

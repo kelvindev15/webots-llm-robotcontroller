@@ -25,6 +25,13 @@ class PR2Wheel():
     def getPosition(self):
         return self.wheels["L"].getPosition()
     
+    def reach(self, targetValue, deltaToCurrentValue, completionHandler=None):
+        self.wheels["L"].reach(
+            targetValue=targetValue, 
+            deltaToCurrentValue=deltaToCurrentValue, 
+            completionHandler=completionHandler
+        )
+
 class PR2CasterWheel():
     def __init__(self, wheel: PR2Wheel, caster: WBMotor):
         self.wheel = wheel
@@ -41,6 +48,13 @@ class PR2CasterWheel():
     def setRotation(self, angle: float):
         return self.caster.setPosition(angle)
     
+    def reach(self, targetValue, deltaToCurrentValue, completionHandler=None):
+        self.wheel.reach(
+            targetValue=targetValue, 
+            deltaToCurrentValue=deltaToCurrentValue, 
+            completionHandler=completionHandler
+        )
+    
 class WheelPosition(Enum):
     FRONT_LEFT = "fl"
     FRONT_RIGHT = "fr"
@@ -49,7 +63,6 @@ class WheelPosition(Enum):
 
 class PR2WheelSystem:
     def __init__(self, devices: PR2Devices, eventManager: EventManager):
-        self.__TOLERANCE = 0.05
         self.eventManager = eventManager
         self.wheels = {
             WheelPosition.BACK_LEFT: PR2CasterWheel(
@@ -69,60 +82,29 @@ class PR2WheelSystem:
     def moveForward(self, speed: float = 1.0, distance: float = None, completionHandler=None):
         self.__setWheelSpeeds(speed, speed, speed, speed)
         if distance != None:
-            self.reach(
-                self.wheels[WheelPosition.BACK_LEFT].getPosition,
+            self.wheels[WheelPosition.BACK_LEFT].reach(
                 targetValue=distance,
                 deltaToCurrentValue=lambda delta: delta * PR2Wheel.WHEEL_RADIUS,
                 completionHandler=completionHandler
             )
         elif completionHandler is not None:
-            completionHandler()
-
+            completionHandler() 
+    
     def rotate(self, speed: float = 1.0, angle: float = None, completionHandler=None):
         self.__setWheelAngles(np.pi/4, -np.pi/4, -np.pi/4, np.pi/4)
         self.__setWheelSpeeds(speed, -speed, speed, -speed)
         if angle != None:
-            self.reach(
-                self.wheels[WheelPosition.BACK_LEFT].getPosition,
+            self.wheels[WheelPosition.BACK_LEFT].reach(
                 targetValue=np.deg2rad(angle),
                 deltaToCurrentValue=lambda delta: abs(delta * PR2Wheel.WHEEL_RADIUS / PR2Wheel.CENTER_TO_WHEEL),
-                completionHandler=completionHandler
+                completionHandler=(lambda: (self.stop(), completionHandler()))
             )
         elif completionHandler is not None:
             completionHandler()
 
     def stop(self):
         self.__setWheelSpeeds(0, 0, 0, 0)
-        self.__setWheelAngles(0, 0, 0, 0)        
-
-    def reach(self, getValue, targetValue, deltaToCurrentValue, completionHandler=None):
-        initialValue = getValue()
-        starting_step = None
-        def onAbort(e: EventData):
-            self.stop()
-            self.eventManager.unsubscribe(handler)
-            self.eventManager.unsubscribe(onAbort)
-        self.eventManager.subscribe(EventType.ABORT, onAbort)
-        def handler(e: StepEventData):
-            nonlocal starting_step
-            if starting_step is None:
-                starting_step = e.step
-            if e.step - starting_step > PR2Wheel.MAX_ACTION_STEP_DURATION:
-                onAbort(e)
-                if completionHandler is not None:
-                    completionHandler()
-                self.eventManager.notify(EventType.ABORT, {"reason": "Movement timed out"}) 
-            currentValue = getValue()
-            delta = abs(currentValue - initialValue)
-            actualValue = deltaToCurrentValue(delta)
-            if abs(actualValue - targetValue) < self.__TOLERANCE:
-                self.stop()
-                self.eventManager.unsubscribe(handler)
-                if completionHandler is not None:
-                    self.eventManager.unsubscribe(onAbort)
-                    completionHandler()  
-        self.eventManager.subscribe(EventType.SIMULATION_STEP, handler)
-        
+        self.__setWheelAngles(0, 0, 0, 0)    
 
     def __setWheelSpeeds(self, bl: float = 0.0, br: float = 0.0, fl: float = 0.0, fr: float = 0.0):
         self.wheels[WheelPosition.BACK_LEFT].setSpeed(bl * PR2Wheel.MAX_SPEED)

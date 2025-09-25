@@ -1,3 +1,4 @@
+import json
 import re
 
 def extractJSON(text: str):
@@ -6,4 +7,7 @@ def extractJSON(text: str):
     match = pattern.search(text)
     if match:
         return match.group(1)
+    else:
+        json.loads(text)
+        return text
     return None

@@ -1,15 +1,17 @@
 from abc import ABC
+from time import sleep
 import langsmith as ls
 from langchain_core.rate_limiters import InMemoryRateLimiter
 from langchain_core.messages.base import BaseMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
+from openai import RateLimitError
 
 from common.utils.llm import create_sys_message, geminiAPIKey, getOpenAIKey
 
 rate_limiter = InMemoryRateLimiter(
-    requests_per_second=1/6,  # 6 seconds per request
+    requests_per_second=0.075,  # 6 seconds per request
     max_bucket_size=2,
     check_every_n_seconds=1
 )
@@ -30,10 +32,21 @@ class LLMChat(ABC):
         rt.metadata["experiment_id"] = self.chat_id
         rt.tags.extend(["WEBOTS"])
         self.chat.append(message)
-        answer = self.llm.invoke(self.chat)
+        tries = 0
+        answer = None
+        while tries < 3:
+            try:
+                answer = self.llm.invoke(self.chat)
+                break
+            except RateLimitError as e:
+                tries += 1
+                print(f"Rate limit exceeded, retrying... ({tries}/3), waiting for 60 seconds")
+                sleep(60)  # Wait for 60 seconds before retrying
+                if tries >= 3:
+                    raise e
         self.chat.append(answer)
-        return answer.content
-
+        return answer.content        
+                
     def generate(self, message):
         self.__checkInitilization()
         return self.llm.invoke(message).content
@@ -76,7 +89,7 @@ class GeminiChat(LLMChat):
         self.model_name = model_name
         self.llm = ChatGoogleGenerativeAI(
             model=model_name,
-            temperature=0.3,
+            temperature=0,
             max_tokens=None,
             timeout=None,
             max_retries=2,
@@ -99,9 +112,9 @@ class OpenAIChat(LLMChat):
         self.model_name = model_name
         self.llm = ChatOpenAI(
             model=model_name,
-            temperature=0,
+            temperature=0.8,
             max_tokens=None,
             timeout=None,
             max_retries=2,
-            api_key=getOpenAIKey()
+            api_key=getOpenAIKey(),
         )

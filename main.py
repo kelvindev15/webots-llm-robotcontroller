@@ -70,42 +70,6 @@ robotKeyboardController.onKey(ord('S'), lambda: robot.goBack(None))
 robotKeyboardController.onKey(ord('D'), lambda: robot.rotateRight(None))
 robotKeyboardController.onKey(ord('Q'), lambda: robot.stop())
 
-boundingBoxPrompt = """
-Output the objects bounding boxes in the image in json format.
-The json should be a list of objects, each object should have the following properties:
-- cls: the name of the object
-- conf: the confidence of the detection
-- x: the x coordinate of the center of the bounding box
-- y: the y coordinate of the center of the bounding box
-- w: the width of the bounding box
-- h: the height of the bounding box
-
-The json should be in the following format:
-[
-    {
-        "name": "object_name",
-        "confidence": 0.9,
-        "x": 100,
-        "y": 300,
-        "w": 40,
-        "h": 20
-    },
-    ...
-]
-
-Output the json without any additional text.
-
-"""
-
-def llmBoundingBox():
-    image = robot.getCameraImage()
-    response = robotChat.send_message(create_message(boundingBoxPrompt, toBase64Image(image)))
-    detections = json.loads(extractJSON(response))
-    for detection in detections:
-        image = box_label(image, ((detection["x"] - 0.5 * detection["w"]), (detection["y"] - 0.5 * detection["h"]), (detection["x"] + 0.5 * detection["w"]), (detection["y"] + 0.5 * detection["h"])), detection["cls"], (0, 255, 0), (255, 255, 255))
-    cv2.imshow("Camera", image)
-    cv2.waitKey(1)
-
 supervisor.step(TIME_STEP)
 pose = getRobotPose(supervisor)
 simulationKeyboardController = KeyboardController()
@@ -113,15 +77,6 @@ simulationKeyboardController.onKey(ord('P'), lambda: llmController.ask(readUserP
 simulationKeyboardController.onKey(ord('L'), lambda: print("Front Lidar:", robot.getFrontLidarImage()))
 simulationKeyboardController.onKey(ord('B'), lambda: (setRobotPose(supervisor, pose), llmController.ask(readUserPrompt())))
 
-def onStep(_: StepEventData):
-    image = robot.getCameraImage()
-    detections = detectObjects(image)
-    for detection in detections:
-        image = box_label(image, ((detection.x - 0.5 * detection.w), (detection.y - 0.5 * detection.h), (detection.x + 0.5 * detection.w), (detection.y + 0.5 * detection.h)), detection.cls, (0, 255, 0), (255, 255, 255))
-    cv2.imshow("Camera", image)
-    cv2.waitKey(1)
-
-# eventManager.subscribe(EventType.SIMULATION_STEP, onStep)
 def save_session(session: LLMSession):
     # create a YYYY_MM-DD_HH-MM-SS format for the session ID
     filename = datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")

@@ -22,14 +22,7 @@ class PR2Controller(WBRobotController):
         self.__initializeArms()
         self.eventManager = eventManager
         self.devices.TILT_LIDAR.setPointCloudEnabled(False)
-        eventManager.subscribe(EventType.SIMULATION_STEP, self.__onSimulationStep)
-        self.locked = False
-        
-    def __lock(self):
-        self.locked = True
-
-    def __unlock(self):
-        self.locked = False        
+        eventManager.subscribe(EventType.SIMULATION_STEP, self.__onSimulationStep)    
     
     def __onSimulationStep(self, _: EventData):
         self.devices.HEAD_PAN_JOINT.setPositionByPercentage(0.5)
@@ -48,7 +41,6 @@ class PR2Controller(WBRobotController):
             res.result()
             self.stop()
        
-
     def goBack(self, distance=1.0):
         super().goBack(distance)
         res = self.wheelSystem.moveForward(-1.0, distance)
@@ -56,26 +48,23 @@ class PR2Controller(WBRobotController):
             res.result()
             self.stop()
 
-    def rotateLeft(self, angle=1.0, completionHandler=None):
+    def rotateLeft(self, angle=1.0):
         super().rotateLeft(angle)
-        if angle is not None and not self.locked:
-            self.__lock()
-            self.wheelSystem.rotate(speed=-1.0, angle=angle, completionHandler=lambda: unlockAndHandle(self.__unlock, completionHandler))
-        elif not self.locked:
-            self.wheelSystem.rotate(speed=-1.0, angle=angle, completionHandler=completionHandler)
+        res = self.wheelSystem.rotate(speed=-1.0, angle=angle)
+        if angle is not None:
+            res.result()
+            self.stop()
 
-    def rotateRight(self, angle=1.0, completionHandler=None):
+    def rotateRight(self, angle=1.0):
         super().rotateRight(angle)
-        if not self.locked and angle is not None:
-            self.__lock()
-            self.wheelSystem.rotate(angle=angle, completionHandler=lambda: unlockAndHandle(self.__unlock, completionHandler))
-        elif not self.locked:
-            self.wheelSystem.rotate(angle=angle, completionHandler=completionHandler)
+        res = self.wheelSystem.rotate(angle=angle)
+        if angle is not None:
+            res.result()
+            self.stop()
 
     def stop(self):
-        if not self.locked:
-            super().stop()
-            self.wheelSystem.stop()
+        super().stop()
+        self.wheelSystem.stop()
 
     def getDepthImage(self):
         samples = np.linspace(0.0, 1.0, 300)
@@ -86,21 +75,16 @@ class PR2Controller(WBRobotController):
         self.tiltLidar.setPositionByPercentage(samples[0], onComplete=lambda: handler(0))
 
     def moveTiltLidarUp(self, onComplete=None):
-        if not self.locked:
-            self.tiltLidar.moveUp(onComplete)
+        self.tiltLidar.moveUp(onComplete)
 
     def moveTiltLidarDown(self, onComplete=None):
-        if not self.locked:
-            self.tiltLidar.moveDown(onComplete)
+        self.tiltLidar.moveDown(onComplete)
 
     def getTiltLidarPositionPercent(self):
-        if not self.locked:
-            return self.tiltLidar.getPositionPercent()
-        return None        
+        return self.tiltLidar.getPositionPercent()
 
     def stopTiltLidar(self):
-        if not self.locked:
-            self.tiltLidar.stop()
+        self.tiltLidar.stop()
 
     def getFullLidarImage(self):
         return self.lidar.getImage()

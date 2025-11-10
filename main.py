@@ -85,20 +85,32 @@ if __name__ == "__main__":
             json.dump(session.asObject(), file, indent=4)
         print("Session saved:", session.id)
     eventManager.subscribe(EventType.LLM_SESSION_COMPLETED, save_session)
+
     step_counter = 0
+    initialPose = pose
     while supervisor.step(TIME_STEP) != -1:
         eventManager.notify(EventType.SIMULATION_STEP, StepEventData(step_counter))
         pressed_key = keyboard.getKey()
         simulationKeyboardController.execute(pressed_key)
-        lockAcquired = robotLock.acquire(blocking=False)
-        if lockAcquired:
-            keyboard_result = robotKeyboardController.execute(pressed_key)
+
+        lock_acquired = robotLock.acquire(blocking=False)
+        if lock_acquired:
+            try:
+                keyboard_result = robotKeyboardController.execute(pressed_key)
+            except Exception as e:
+                robotLock.release()
+                print("Keyboard handler error:", e)
+                keyboard_result = None
+
             if isinstance(keyboard_result, Future):
-                keyboard_result.add_done_callback(lambda _: robotLock.release())
+                keyboard_result.add_done_callback(lambda _f: robotLock.release())
             else:
                 robotLock.release()
-            if not keyboard_result:
+
+            if keyboard_result is False:
                 robot.stop()
-        handle_keyboard_input(keyboard.getKey(), robot, initialPose)
+
+        # reuse pressed_key instead of calling getKey() again
+        handle_keyboard_input(pressed_key, robot, initialPose)
         step_counter += 1
     cv2.destroyAllWindows()

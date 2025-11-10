@@ -87,13 +87,11 @@ class PR2WheelSystem:
         self.__setWheelAngles(np.pi/4, -np.pi/4, -np.pi/4, np.pi/4)
         self.__setWheelSpeeds(speed, -speed, speed, -speed)
         if angle != None:
-            self.wheels[WheelPosition.BACK_LEFT].reach(
+            return self.wheels[WheelPosition.BACK_LEFT].reach(
                 targetValue=np.deg2rad(angle),
                 deltaToCurrentValue=lambda delta: abs(delta * PR2Wheel.WHEEL_RADIUS / PR2Wheel.CENTER_TO_WHEEL),
-                completionHandler=(lambda: (self.stop(), completionHandler()))
             )
-        elif completionHandler is not None:
-            completionHandler()
+        return None
 
     def stop(self):
         self.__setWheelSpeeds(0, 0, 0, 0)

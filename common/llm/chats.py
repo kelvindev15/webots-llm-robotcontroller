@@ -26,7 +26,7 @@ class LLMChat(ABC):
         self.clear_chat()
         
     @ls.traceable()
-    def send_message(self, message: BaseMessage):    
+    async def send_message(self, message: BaseMessage):    
         self.__checkInitilization()
         rt = ls.get_current_run_tree()
         rt.metadata["experiment_id"] = self.chat_id
@@ -36,7 +36,7 @@ class LLMChat(ABC):
         answer = None
         while tries < 3:
             try:
-                answer = self.llm.invoke(self.chat)
+                answer = await self.llm.ainvoke(self.chat)
                 break
             except RateLimitError as e:
                 tries += 1

@@ -1,10 +1,9 @@
-from common.robot.llm.RobotAction import RobotAction
+from concurrent.futures import ThreadPoolExecutor
 from controllers.webots.adapters.motor import WBMotor
 from enum import Enum
 import numpy as np
 from controllers.webots.pr2.devices import PR2Devices
-from simulation.events import StepEventData
-from simulation.observers import EventManager, EventData, EventType
+from simulation.observers import EventManager
 
 class PR2Wheel():
     WHEEL_RADIUS = 0.08
@@ -25,11 +24,10 @@ class PR2Wheel():
     def getPosition(self):
         return self.wheels["L"].getPosition()
     
-    def reach(self, targetValue, deltaToCurrentValue, completionHandler=None):
-        self.wheels["L"].reach(
+    def reach(self, targetValue, deltaToCurrentValue):
+        return self.wheels["L"].reach(
             targetValue=targetValue, 
-            deltaToCurrentValue=deltaToCurrentValue, 
-            completionHandler=completionHandler
+            deltaToCurrentValue=deltaToCurrentValue
         )
 
 class PR2CasterWheel():
@@ -48,11 +46,10 @@ class PR2CasterWheel():
     def setRotation(self, angle: float):
         return self.caster.setPosition(angle)
     
-    def reach(self, targetValue, deltaToCurrentValue, completionHandler=None):
-        self.wheel.reach(
+    def reach(self, targetValue, deltaToCurrentValue):
+        return self.wheel.reach(
             targetValue=targetValue, 
-            deltaToCurrentValue=deltaToCurrentValue, 
-            completionHandler=completionHandler
+            deltaToCurrentValue=deltaToCurrentValue,
         )
     
 class WheelPosition(Enum):
@@ -64,6 +61,7 @@ class WheelPosition(Enum):
 class PR2WheelSystem:
     def __init__(self, devices: PR2Devices, eventManager: EventManager):
         self.eventManager = eventManager
+        self.executor = ThreadPoolExecutor(max_workers=2)
         self.wheels = {
             WheelPosition.BACK_LEFT: PR2CasterWheel(
                 PR2Wheel(devices.BACK_LEFT_LEFT_WHEEL, devices.BACK_LEFT_RIGHT_WHEEL), devices.BACK_LEFT_CASTER
@@ -79,17 +77,12 @@ class PR2WheelSystem:
             )
         }
 
-    def moveForward(self, speed: float = 1.0, distance: float = None, completionHandler=None):
+    def moveForward(self, speed: float = 1.0, distance: float = None):
         self.__setWheelSpeeds(speed, speed, speed, speed)
         if distance != None:
-            self.wheels[WheelPosition.BACK_LEFT].reach(
-                targetValue=distance,
-                deltaToCurrentValue=lambda delta: delta * PR2Wheel.WHEEL_RADIUS,
-                completionHandler=completionHandler
-            )
-        elif completionHandler is not None:
-            completionHandler() 
-    
+            return self.wheels[WheelPosition.BACK_LEFT].reach(distance,lambda delta: delta * PR2Wheel.WHEEL_RADIUS)
+        return None
+
     def rotate(self, speed: float = 1.0, angle: float = None, completionHandler=None):
         self.__setWheelAngles(np.pi/4, -np.pi/4, -np.pi/4, np.pi/4)
         self.__setWheelSpeeds(speed, -speed, speed, -speed)

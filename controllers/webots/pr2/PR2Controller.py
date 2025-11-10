@@ -41,21 +41,20 @@ class PR2Controller(WBRobotController):
         self.devices.LEFT_ELBOW_FLEX.setToMinPosition()
         self.devices.RIGHT_ELBOW_FLEX.setToMinPosition()
 
-    def goFront(self, distance=1.0, completionHandler=None):
+    def goFront(self, distance=1.0):
         super().goFront(distance)
-        if distance is not None and not self.locked:
-            self.__lock()
-            self.wheelSystem.moveForward(distance=distance, completionHandler=lambda: unlockAndHandle(self.__unlock, completionHandler))
-        elif not self.locked:
-            self.wheelSystem.moveForward(distance=distance, completionHandler=completionHandler)
+        res = self.wheelSystem.moveForward(1.0, distance)
+        if res is not None:
+            res.result()
+            self.stop()
+       
 
-    def goBack(self, distance=1.0, completionHandler=None):
+    def goBack(self, distance=1.0):
         super().goBack(distance)
-        if distance is not None and not self.locked:
-            self.__lock()
-            self.wheelSystem.moveForward(speed=-1.0, distance=distance, completionHandler=lambda: unlockAndHandle(self.__unlock, completionHandler))
-        elif not self.locked:
-            self.wheelSystem.moveForward(speed=-1.0, distance=distance, completionHandler=completionHandler)
+        res = self.wheelSystem.moveForward(-1.0, distance)
+        if res is not None:
+            res.result()
+            self.stop()
 
     def rotateLeft(self, angle=1.0, completionHandler=None):
         super().rotateLeft(angle)

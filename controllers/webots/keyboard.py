@@ -1,7 +1,10 @@
+from concurrent.futures import ThreadPoolExecutor
+
 class KeyboardController:
     def __init__(self):
         self.controls = {}
         self.NO_KEY_HANDLER = None
+        self.executor = ThreadPoolExecutor(max_workers=2)
         pass
 
     def onKey(self, key, handler):
@@ -14,8 +17,8 @@ class KeyboardController:
 
     def execute(self, key):
         if key in self.controls:
-            self.controls[key]()
-            return True
+            f = self.executor.submit(self.controls[key])
+            return f
         elif key == -1 and self.NO_KEY_HANDLER != None:
             self.NO_KEY_HANDLER()
         return False

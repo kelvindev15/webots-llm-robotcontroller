@@ -1,8 +1,7 @@
-import numpy as np
+from concurrent.futures import ThreadPoolExecutor
 from controller.motor import Motor
 from controller.position_sensor import PositionSensor
 from controller.constants import constant
-from simulation.events import StepEventData
 from simulation.observers import EventManager, EventData, EventType
 from typing import Callable
 
@@ -12,6 +11,8 @@ TOLERANCE = 0.05
 class WBMotor():
     def __init__(self, motor: Motor, timeStep: int, eventManager: EventManager):
         self.motor: Motor = motor
+        self.executor = ThreadPoolExecutor(max_workers=2)
+
         self.eventManager: EventManager = eventManager
         self.sensor: PositionSensor = self.motor.position_sensor
         self.minPosition = self.motor.min_position
@@ -58,33 +59,19 @@ class WBMotor():
     def getPosition(self) -> float:
         return self.sensor.getValue()
     
-    def reach(self, targetValue, deltaToCurrentValue, completionHandler=None):
+    def reach(self, targetValue, deltaToCurrentValue):
         initialValue = self.getPosition()
-        starting_step = None
-        def onAbort(e: EventData):
-            self.stop()
-            self.eventManager.unsubscribe(handler)
-            self.eventManager.unsubscribe(onAbort)
-        self.eventManager.subscribe(EventType.ABORT, onAbort)
-        def handler(e: StepEventData):
-            nonlocal starting_step
-            if starting_step is None:
-                starting_step = e.step
-            if e.step - starting_step > MAX_ACTION_STEP_DURATION:
-                onAbort(e)
-                if completionHandler is not None:
-                    completionHandler()
-                self.eventManager.notify(EventType.ABORT, {"reason": "Movement timed out"}) 
+        def handler():
             currentValue = self.getPosition()
             delta = abs(currentValue - initialValue)
             actualValue = deltaToCurrentValue(delta)
-            if abs(actualValue - targetValue) < TOLERANCE * 2:
-                self.stop()
-                self.eventManager.unsubscribe(handler)
-                if completionHandler is not None:
-                    self.eventManager.unsubscribe(onAbort)
-                    completionHandler()        
-        self.eventManager.subscribe(EventType.SIMULATION_STEP, handler)
+            while not(abs(actualValue - targetValue) < TOLERANCE * 2):
+                delta = abs(self.getPosition() - initialValue)
+                actualValue = deltaToCurrentValue(delta)
+                pass
+            return True
+        f = self.executor.submit(handler)
+        return f
 
     def stop(self):
         self.motor.setVelocity(0)

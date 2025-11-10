@@ -1,6 +1,7 @@
 import logging
 from common.robot.RobotController import RobotController
 from common.robot.llm.RobotAction import RobotAction
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +16,13 @@ class ActionAdapter:
             "ROTATE_RIGHT": self.robot.rotateRight,
         }
 
-    def execute(self, action: RobotAction, completionHandler=None) -> bool:
+    async def execute(self, action: RobotAction, completionHandler=None) -> bool:
         command = action.command
         parameter = action.parameter
         if command in self.actionMap:
-            self.actionMap[command](parameter, completionHandler)
+            task = threading.Thread(target=self.actionMap[command], args=(parameter,))
+            task.start()
+            task.join()
             self.robot.stop()
             return True
         else:

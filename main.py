@@ -42,7 +42,7 @@ if __name__ == "__main__":
     MAX_SPEED = 6.28
     eventManager = EventManager()
     supervisor = Supervisor()
-    llmObserver = LLMObserver(supervisor,eventManager)
+    llmObserver = LLMObserver(supervisor, eventManager)
     pr2Devices = PR2Devices(supervisor, eventManager, TIME_STEP)
     # khepheraDevices = KhepheraDevices(supervisor, eventManager, TIME_STEP)
     robot = PR2Controller(pr2Devices, eventManager)
@@ -59,6 +59,7 @@ if __name__ == "__main__":
     image = None
     initialPose = None
     robotLock = Lock()
+    simulationLock = Lock()
 
     robotKeyboardController = KeyboardController()
     robotKeyboardController.onKey(keyboard.RIGHT, lambda: robot.rotateRight(90))
@@ -84,7 +85,12 @@ if __name__ == "__main__":
         with open(f"experiments/experiment_{filename}.json", "w") as file:
             json.dump(session.asObject(), file, indent=4)
         print("Session saved:", session.id)
+
+
     eventManager.subscribe(EventType.LLM_SESSION_COMPLETED, save_session)
+    eventManager.subscribe(EventType.LLM_START, lambda _: (print("LLM started"), simulationLock.acquire(blocking=False)))
+    eventManager.subscribe(EventType.LLM_FINISH, lambda _: (print("LLM finished"), simulationLock.release()))
+    eventManager.subscribe(EventType.ABORT, lambda _: (print("LLM aborted"), simulationLock.release()))
 
     step_counter = 0
     initialPose = pose
@@ -107,7 +113,7 @@ if __name__ == "__main__":
             else:
                 robotLock.release()
 
-            if keyboard_result is False:
+            if keyboard_result is False and not simulationLock.locked():
                 robot.stop()
 
         # reuse pressed_key instead of calling getKey() again

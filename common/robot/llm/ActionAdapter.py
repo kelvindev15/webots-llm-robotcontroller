@@ -16,7 +16,7 @@ class ActionAdapter:
             "ROTATE_RIGHT": self.robot.rotateRight,
         }
 
-    async def execute(self, action: RobotAction, completionHandler=None) -> bool:
+    async def execute(self, action: RobotAction) -> bool:
         command = action.command
         parameter = action.parameter
         if command in self.actionMap:

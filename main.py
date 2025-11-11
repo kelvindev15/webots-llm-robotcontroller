@@ -2,8 +2,6 @@ from concurrent.futures import Future
 from common.llm.chats import GeminiChat, OllamaChat, OpenAIChat
 from common.robot.LLMRobotController import LLMRobotController
 from common.utils.environment import getRobotPose, setRobotPose
-from controllers.webots.khepera.KhepheraController import KhepheraController
-from controllers.webots.khepera.devices import KhepheraDevices
 from controllers.webots.pr2.PR2Controller import PR2Controller
 from controllers.webots.pr2.devices import PR2Devices
 from controllers.webots.keyboard import KeyboardController

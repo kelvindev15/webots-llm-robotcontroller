@@ -79,4 +79,13 @@ def getRobotPose(supervisor: Supervisor):
 def setRobotPose(supervisor: Supervisor, pose):
     supervisor.getSelf().getField("translation").setSFVec3f(pose["position"])
     supervisor.getSelf().getField("rotation").setSFRotation(pose["rotation"])
+
+def setRandomRobotPose(supervisor: Supervisor):
+    from common.utils.geometry import find_safe_position
+    safe_pos = find_safe_position(supervisor)
+    if safe_pos is not None:
+        position = [safe_pos[0], safe_pos[1], 0.0]
+        rotation = [0, 0, 1, np.random.uniform(0, np.pi)]
+        supervisor.getSelf().getField("translation").setSFVec3f(position)
+        supervisor.getSelf().getField("rotation").setSFRotation(rotation)    
     

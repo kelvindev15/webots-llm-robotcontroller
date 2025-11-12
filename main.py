@@ -1,7 +1,8 @@
 from concurrent.futures import Future
 from common.llm.chats import GeminiChat, OllamaChat, OpenAIChat
 from common.robot.LLMRobotController import LLMRobotController
-from common.utils.environment import getRobotPose, setRobotPose
+from common.utils.environment import getRobotPose, setRobotPose, setRandomRobotPose
+from common.utils.geometry import find_safe_position
 from controllers.webots.pr2.PR2Controller import PR2Controller
 from controllers.webots.pr2.devices import PR2Devices
 from controllers.webots.keyboard import KeyboardController
@@ -76,6 +77,7 @@ if __name__ == "__main__":
     simulationKeyboardController.onKey(ord('P'), lambda: asyncio.run(llmController.ask(readUserPrompt())))
     simulationKeyboardController.onKey(ord('L'), lambda: print("Front Lidar:", robot.getFrontLidarImage()))
     simulationKeyboardController.onKey(ord('B'), lambda: (setRobotPose(supervisor, pose), llmController.ask(readUserPrompt())))
+    simulationKeyboardController.onKey(ord('H'), lambda: print("Environment bounds:", setRandomRobotPose(supervisor)))
 
     def save_session(session: LLMSession):
         # create a YYYY_MM-DD_HH-MM-SS format for the session ID

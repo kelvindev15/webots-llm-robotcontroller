@@ -44,7 +44,7 @@ Use the following commands for movement:
 Lidar assists in evaluating space around the robot:
 
 * **Front distance**: Directly ahead.
-* **Right \[a, b]**, **Middle \[a, b]**, **Left \[a, b]**: Closest lidar distances within these sections of the image.
+* **Section 1 [a, b]**, **Section 2 [a, b]**, **Section 3 [a, b]**, ...: Closest lidar distances within each defined angular section of the scan.
 
 Use these to:
 

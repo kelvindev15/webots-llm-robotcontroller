@@ -49,74 +49,82 @@ class LidarSection:
             "min_distance_angle": self.min_distance_angle
         }
 
-def getDistancesFromLidar(readings: List[float], fov_degrees: int) -> Dict[str, Any]:
+def getDistancesFromLidar(readings: List[float], fov_degrees: int, num_sections: int = 3) -> Dict[str, Any]:
     """
-    Process LIDAR readings and return structured distance data.
+    Process LIDAR readings and return structured distance data divided into num_sections equally.
     
     Args:
         readings: Raw LIDAR distance readings
         fov_degrees: Field of view in degrees
+        num_sections: Number of equal angular sections to split the FOV into
     
     Returns:
-        Dictionary containing processed LIDAR data by sections
+        Dictionary containing processed LIDAR data: front_distance and a list of section dicts
     """
     readings_array = np.array(readings)
-    section_angle = fov_degrees // 3
-    points_per_degree = len(readings) / float(fov_degrees)
-    
-    # Split readings into sections
-    left_end = int(points_per_degree * section_angle)
-    middle_end = int(points_per_degree * 2 * section_angle)
-    
-    sections = {
-        "left": LidarSection(
-            -fov_degrees // 2,
-            -fov_degrees // 2 + section_angle,
-            readings_array[:left_end]
-        ),
-        "middle": LidarSection(
-            -section_angle // 2,
-            section_angle // 2,
-            readings_array[left_end:middle_end]
-        ),
-        "right": LidarSection(
-            section_angle // 2,
-            fov_degrees // 2,
-            readings_array[middle_end:]
+    if len(readings_array) == 0 or num_sections < 1:
+        return {"front_distance": None, "sections": []}
+
+    section_angle = float(fov_degrees) / float(num_sections)
+    points_per_degree = len(readings_array) / float(fov_degrees)
+
+    # compute split indices to cover entire array
+    points_per_section = [int(round(points_per_degree * section_angle)) for _ in range(num_sections)]
+    # adjust to ensure sum matches length by distributing difference
+    total_assigned = sum(points_per_section)
+    diff = len(readings_array) - total_assigned
+    i = 0
+    while diff != 0:
+        points_per_section[i % num_sections] += 1 if diff > 0 else -1
+        diff = len(readings_array) - sum(points_per_section)
+        i += 1
+
+    sections = []
+    start_idx = 0
+    fov_start = -float(fov_degrees) / 2.0
+    for i, pts in enumerate(points_per_section):
+        end_idx = start_idx + max(0, pts)
+        min_angle = fov_start + i * section_angle
+        max_angle = min_angle + section_angle
+        slice_readings = readings_array[start_idx:end_idx] if end_idx > start_idx else np.array([])
+        sections.append(
+            LidarSection(min_angle, max_angle, slice_readings).to_dict()
         )
-    }
-    
-    return {
-        "front_distance": (
-            readings_array[len(readings) // 2 - 3: len(readings) // 2 + 3].mean()
-            if len(readings) > 6 else None
-        ),
-        **{key: section.to_dict() for key, section in sections.items()}
-    }
+        start_idx = end_idx
+
+    # front distance: mean of central window
+    half_width = 3
+    n = len(readings_array)
+    if n > 2 * half_width:
+        center = n // 2
+        front_slice = readings_array[max(0, center - half_width): min(n, center + half_width + 1)]
+        front_distance = float(front_slice.mean()) if front_slice.size > 0 else None
+    else:
+        front_distance = None
+
+    return {"front_distance": front_distance, "sections": sections}
+
 
 def format_distance_reading(value: Optional[float], precision: int = 2) -> str:
     """Format a distance reading with specified precision."""
     return f"{round(value, precision)}" if value is not None else "N/A"
 
+
 def getDistanceDescription(distances: Dict[str, Any]) -> str:
-    """Generate a human-readable description of LIDAR distances."""
-    template = """
-    Lidar distances:
-      - Front: {front}
-      - Left ([{left_range}] degrees): {left_dist} at angle {left_angle} degrees
-      - Middle ([{mid_range}] degrees): {mid_dist} at angle {mid_angle} degrees
-      - Right ([{right_range}] degrees): {right_dist} at angle {right_angle} degrees
-    """
-    
-    return template.format(
-        front=format_distance_reading(distances['front_distance']),
-        left_range=f"{distances['left']['minAngle']}, {distances['left']['maxAngle']}",
-        left_dist=format_distance_reading(distances['left']['min_distance']),
-        left_angle=np.round(distances['left']['min_distance_angle']),
-        mid_range=f"{distances['middle']['minAngle']}, {distances['middle']['maxAngle']}",
-        mid_dist=format_distance_reading(distances['middle']['min_distance']),
-        mid_angle=np.round(distances['middle']['min_distance_angle']),
-        right_range=f"{distances['right']['minAngle']}, {distances['right']['maxAngle']}",
-        right_dist=format_distance_reading(distances['right']['min_distance']),
-        right_angle=np.round(distances['right']['min_distance_angle'])
-    )
+    """Generate a human-readable description of LIDAR distances for an arbitrary number of sections."""
+    lines = []
+    lines.append(f"Lidar distances:")
+    lines.append(f"  - Front: {format_distance_reading(distances.get('front_distance'))}")
+
+    sections = distances.get("sections", [])
+    for idx, sec in enumerate(sections):
+        min_a = sec.get("minAngle")
+        max_a = sec.get("maxAngle")
+        dist = sec.get("min_distance")
+        angle = sec.get("min_distance_angle")
+        angle_str = f"{np.round(angle)}" if angle is not None else "N/A"
+        lines.append(
+            f"  - Section {idx+1} ([{min_a}, {max_a}] degrees): {format_distance_reading(dist)} at angle {angle_str} degrees"
+        )
+
+    return "\n".join(lines)

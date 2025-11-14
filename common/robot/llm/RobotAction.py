@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 @dataclass
 class Motivation:
@@ -10,7 +10,7 @@ class Motivation:
 class RobotAction:
     command: str
     parameter: float
-    motivation: Motivation = Motivation()
+    motivation: Motivation = field(default_factory=Motivation)
     
     def __repr__(self):
         return f"RobotAction(command={self.command}, parameter={self.parameter}, motivation={self.motivation})"

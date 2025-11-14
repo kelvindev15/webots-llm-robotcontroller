@@ -61,7 +61,7 @@ class WheelPosition(Enum):
 class PR2WheelSystem:
     def __init__(self, devices: PR2Devices, eventManager: EventManager):
         self.eventManager = eventManager
-        self.executor = ThreadPoolExecutor(max_workers=2)
+        self.executor = ThreadPoolExecutor(max_workers=4)
         self.wheels = {
             WheelPosition.BACK_LEFT: PR2CasterWheel(
                 PR2Wheel(devices.BACK_LEFT_LEFT_WHEEL, devices.BACK_LEFT_RIGHT_WHEEL), devices.BACK_LEFT_CASTER

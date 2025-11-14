@@ -57,7 +57,7 @@ class PR2Controller(WBRobotController):
 
     def rotateRight(self, angle=1.0):
         super().rotateRight(angle)
-        res = self.wheelSystem.rotate(angle=angle)
+        res = self.wheelSystem.rotate(speed=1.0, angle=angle)
         if angle is not None:
             res.result()
             self.stop()

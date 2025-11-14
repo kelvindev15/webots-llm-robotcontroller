@@ -51,7 +51,7 @@ class WBMotor():
                 self.eventManager.unsubscribe(abort_handler)
                 self.stop()
                 onComplete()
-            self.eventManager.subscribe(EventType.ABORT, abort_handler)
+            self.eventManager.subscribe(EventType.SIMULATION_ABORTED, abort_handler)
 
     def __fuzzyEquals(self, a: float, b: float, epsilon: float = 0.01) -> bool:
         return abs(a - b) < epsilon

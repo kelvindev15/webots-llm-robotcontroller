@@ -87,10 +87,10 @@ if __name__ == "__main__":
         print("Session saved:", session.id)
 
 
-    eventManager.subscribe(EventType.LLM_SESSION_COMPLETED, save_session)
-    eventManager.subscribe(EventType.LLM_START, lambda _: (print("LLM started"), simulationLock.acquire(blocking=False)))
-    eventManager.subscribe(EventType.LLM_FINISH, lambda _: (print("LLM finished"), simulationLock.release()))
-    eventManager.subscribe(EventType.ABORT, lambda _: (print("LLM aborted"), simulationLock.release()))
+    eventManager.subscribe(EventType.LLM_GOAL_COMPLETED, save_session)
+    eventManager.subscribe(EventType.SIMULATION_STARTED, lambda _: (print("LLM started"), simulationLock.acquire(blocking=False)))
+    eventManager.subscribe(EventType.END_OF_SIMULATION, lambda _: (print("LLM finished"), simulationLock.release()))
+    eventManager.subscribe(EventType.SIMULATION_ABORTED, lambda _: (print("LLM aborted"), simulationLock.release()))
 
     step_counter = 0
     initialPose = pose

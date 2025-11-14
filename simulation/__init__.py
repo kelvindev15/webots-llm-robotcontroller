@@ -54,7 +54,6 @@ class LLMSession:
         self.actions.append(action)
 
     def asObject(self):
-        print(self.targets)
         return {
             "id": self.id,
             "model": self.model,

@@ -70,7 +70,7 @@ class WBLidar:
     def _validate_params(self, fov_degrees: int, rotation_degrees: int) -> None:
         """Validate FOV and rotation parameters"""
         if not 0 <= fov_degrees < self.config.fov_degrees:
-            raise ValueError(f"FOV must be between 0 and {self.config.fov_degrees} degrees")
+            raise ValueError(f"FOV must be between 0 and {self.config.fov_degrees} degrees, got {fov_degrees}")
         
         max_rotation = self.config.fov_degrees - fov_degrees
         if not -max_rotation <= rotation_degrees <= max_rotation:

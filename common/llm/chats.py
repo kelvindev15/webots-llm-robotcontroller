@@ -44,6 +44,9 @@ class LLMChat(ABC):
                 sleep(60)  # Wait for 60 seconds before retrying
                 if tries >= 3:
                     raise e
+            except Exception as e:
+                print(f"Error during LLM invocation: {type(e)}")
+                raise e         
         self.chat.append(answer)
         return answer.content        
                 

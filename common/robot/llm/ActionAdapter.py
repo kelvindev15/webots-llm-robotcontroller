@@ -47,5 +47,6 @@ class ActionAdapter:
         command = action.command
         parameter = action.parameter
         if command == "FRONT" and np.min(lidar) < parameter:
+            print("Minimum distance to obstacle:", np.min(lidar), "Required distance:", parameter)
             return False
         return True    

@@ -5,7 +5,7 @@ import random
 import math
 
 OBSTACLES = ["CLOSED_CABINET", "OPEN_CABINET", "TABLE", 
-             "PLASTIC_CRATE", "PALLET_STACK", "SINGLE_PALLET",
+             "PLASTIC_CRATE", "PALLET_STACK", "SINGLE_PALLET_STACK",
              "BOX_1", "WOODEN_BOX", "BOX_2", "WOODEN_PALLET", "STAIRS",
              "FIRE_EXTINGUISHER", "OIL_BARREL", "BARREL_1"
 ]

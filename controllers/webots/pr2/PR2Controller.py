@@ -98,6 +98,6 @@ class PR2Controller(WBRobotController):
     def getRightLidarImage(self):
         return self.lidar.getPoints(85, 90)
     
-    def getLidarImage(self,atDegree: int, fov: int):
-        return self.lidar.getPoints(atDegree - (fov//2), fov)
+    def getLidarImage(self, fov: int, rotation_degrees: int):
+        return self.lidar.getPoints(fov, rotation_degrees)
     

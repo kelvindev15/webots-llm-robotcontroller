@@ -76,6 +76,16 @@ def getRobotPose(supervisor: Supervisor):
         "rotation": rotation
     }
 
+def readRobotPose(file="robot_pose.json"):
+    import json
+    try:
+        with open(file, "r") as f:
+            pose = json.load(f)
+            return pose
+    except Exception as e:
+        print(f"readRobotPose: Error reading robot pose from {file}: {e}")
+        return None
+
 def setRobotPose(supervisor: Supervisor, pose):
     supervisor.getSelf().getField("translation").setSFVec3f(pose["position"])
     supervisor.getSelf().getField("rotation").setSFRotation(pose["rotation"])

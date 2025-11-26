@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from common.robot.RobotController import RobotController
 from common.robot.llm.RobotAction import RobotAction
@@ -34,9 +35,13 @@ class ActionAdapter:
         command = action.command
         parameter = action.parameter
         if command in self.actionMap:
-            task = threading.Thread(target=self.actionMap[command], args=(parameter,))
-            task.start()
-            task.join()
+            # run the blocking function in a thread and allow cancellation
+            try:
+                await asyncio.to_thread(self.actionMap[command], parameter)
+            except asyncio.CancelledError:
+                # stop the robot immediately if cancelled
+                self.robot.stop()
+                raise
             self.robot.stop()
             return ActionResult(status=ActionStatus.SUCCESS, message=f"Executed {command} with parameter {parameter}")
         else:

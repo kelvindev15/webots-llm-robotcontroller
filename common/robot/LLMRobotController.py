@@ -32,7 +32,7 @@ class LLMRobotController:
     def __buildSceneDescription(self) -> str:
         view_description = f"""
                 Here is the current view of the robot.
-                {getDistanceDescription(getDistancesFromLidar(self.robot.getFrontLidarImage(), 90))}
+                {getDistanceDescription(getDistancesFromLidar(self.robot.getFrontLidarImage(), 90, 5))}
                 """.strip()
         return view_description if isinstance(self.robot, PR2Controller) else "Current view:"
         

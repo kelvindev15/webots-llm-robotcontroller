@@ -30,6 +30,7 @@ class LLMChat(ABC):
         self.__checkInitilization()
         rt = ls.get_current_run_tree()
         rt.metadata["experiment_id"] = self.chat_id
+        rt.metadata["session_id"] = self.chat_id
         rt.tags.extend(["WEBOTS"])
         self.chat.append(message)
         tries = 0
@@ -95,7 +96,7 @@ class GeminiChat(LLMChat):
             temperature=0,
             max_tokens=None,
             timeout=None,
-            max_retries=2,
+            max_retries=5,
             api_key=geminiAPIKey(),
             rate_limiter=rate_limiter
         )

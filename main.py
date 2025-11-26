@@ -2,7 +2,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 import threading
 from common.llm.chats import GeminiChat, OllamaChat, OpenAIChat
 from common.robot.LLMRobotController import LLMRobotController
-from common.utils.environment import getRobotPose, setRobotPose, setRandomRobotPose
+from common.utils.environment import getRobotPose, readRobotPose, setRobotPose, setRandomRobotPose
 from common.utils.geometry import find_safe_position
 from controllers.webots.pr2.PR2Controller import PR2Controller
 from controllers.webots.pr2.devices import PR2Devices
@@ -99,26 +99,6 @@ async def simulationBatch():
                         await llmController.ask(prompt)
                     except Exception as e:
                         print(f"simulationBatch: Error running LLM for prompt {p_index} pos {pos_index} run {run_index}: {e}")
-
-                    # save a lightweight metadata file describing this run
-                    ts = datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
-                    filename = f"experiments/experiment_prompt{p_index}_pos{pos_index}_run{run_index}_{ts}.json"
-                    metadata = {
-                        "prompt_index": p_index,
-                        "prompt": prompt,
-                        "position_index": pos_index,
-                        "run_index": run_index,
-                        "pose": pose,
-                        "timestamp": datetime.datetime.now().isoformat()
-                    }
-                    try:
-                        os.makedirs(os.path.dirname(filename), exist_ok=True)
-                        with open(filename, "w") as fh:
-                            json.dump(metadata, fh, indent=4)
-                        print(f"simulationBatch: Saved run metadata to {filename}")
-                    except Exception as e:
-                        print(f"simulationBatch: Failed to save run metadata: {e}")
-
                 except Exception as e:
                     print(f"simulationBatch: Unexpected error during run loop: {e}")
 
@@ -169,7 +149,7 @@ if __name__ == "__main__":
     simulationKeyboardController = KeyboardController()
     simulationKeyboardController.onKey(ord('P'), lambda: asyncio.run(llmController.ask(readUserPrompt())))
     simulationKeyboardController.onKey(ord('L'), lambda: print("Front Lidar:", robot.getFrontLidarImage()))
-    simulationKeyboardController.onKey(ord('B'), lambda: (setRobotPose(supervisor, pose), llmController.ask(readUserPrompt())))
+    simulationKeyboardController.onKey(ord('B'), lambda: (setRobotPose(supervisor, readRobotPose()), asyncio.run(llmController.ask(readUserPrompt()))))
     simulationKeyboardController.onKey(ord('H'), lambda: print("Environment bounds:", setRandomRobotPose(supervisor)))
     # Start the full simulation batch sequentially when G is pressed. Uses batchLock to avoid parallel batches.
     def start_simulation_batch():

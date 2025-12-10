@@ -8,13 +8,18 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from openai import RateLimitError
 
-from common.utils.llm import create_sys_message, geminiAPIKey, getOpenAIKey
+from common.utils.llm import create_sys_message, geminiAPIKey, getOpenAIKey, create_message
 
 rate_limiter = InMemoryRateLimiter(
     requests_per_second=0.075,  # 6 seconds per request
     max_bucket_size=2,
     check_every_n_seconds=1
 )
+
+class LLMSelfCheckResult():
+    def __init__(self, response: str, self_check: str):
+        self.response = response
+        self.self_check = self_check
 
 class LLMChat(ABC):
     def __init__(self):
@@ -26,7 +31,7 @@ class LLMChat(ABC):
         self.clear_chat()
         
     @ls.traceable()
-    async def send_message(self, message: BaseMessage):    
+    async def send_message(self, message: BaseMessage, with_self_check: bool = False):    
         self.__checkInitilization()
         rt = ls.get_current_run_tree()
         rt.metadata["experiment_id"] = self.chat_id
@@ -35,10 +40,18 @@ class LLMChat(ABC):
         self.chat.append(message)
         tries = 0
         answer = None
+        self_check_answer = None
         while tries < 3:
             try:
                 answer = await self.llm.ainvoke(self.chat)
-                break
+                self.chat.append(answer)
+                if with_self_check:
+                    print("Original LLM Response:", answer.content)
+                    # self-check prompt that asks the model to confirm JSON before emitting the action
+                    self.chat.append(create_message("Please confirm that your previous response is a valid JSON object wrapped in triple backticks, and that it adheres to the constraints and safety requirements specified earlier. If it is valid, respond with 'CONFIRMED'. If not, please revise your previous response to ensure it meets all requirements."))
+                    self_check_answer = await self.llm.ainvoke(self.chat)
+                    print("LLM Self-Check Response:", self_check_answer.content)
+                    break
             except RateLimitError as e:
                 tries += 1
                 print(f"Rate limit exceeded, retrying... ({tries}/3), waiting for 60 seconds")
@@ -47,8 +60,12 @@ class LLMChat(ABC):
                     raise e
             except Exception as e:
                 print(f"Error during LLM invocation: {type(e)}")
-                raise e         
-        self.chat.append(answer)
+                raise e
+        if with_self_check:
+            if self_check_answer and "CONFIRMED" in self_check_answer.content.upper():
+                self.chat.append(self_check_answer)
+                return answer.content
+            return self_check_answer.content
         return answer.content        
                 
     def generate(self, message):

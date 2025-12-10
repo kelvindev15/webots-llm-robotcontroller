@@ -72,7 +72,7 @@ class LLMAdapter:
         Success: Result.success(RobotAction)
         Failure: Result.failure(Exception) with one of: InvalidJSON, SchemaValidationError, or other runtime error
         """
-        response = await self.chat.send_message(create_message(prompt, image))
+        response = await self.chat.send_message(create_message(prompt, image), True)
 
         # Attempt to extract JSON string from the model response
         try:

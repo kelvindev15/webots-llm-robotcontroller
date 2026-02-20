@@ -29,9 +29,10 @@ class LLMRobotController:
         self.eventManager = eventManager
         self.sessionLock = Lock()
 
-    def __buildSceneDescription(self) -> str:
+    def __buildSceneDescription(self, prompt = None) -> str:
+        preamble = f"Goal: {prompt}" if prompt is not None else "Here is the current view of the robot."
         view_description = f"""
-                Here is the current view of the robot.
+                {preamble}
                 {getDistanceDescription(getDistancesFromLidar(self.robot.getFrontLidarImage(), 90, 8))}
                 """.strip()
         return view_description if isinstance(self.robot, PR2Controller) else "Current view:"
@@ -46,7 +47,7 @@ class LLMRobotController:
             iterations = 0
             try:
                 self.eventManager.notify(EventType.SENDING_MESSAGE_TO_LLM, { "message": prompt, "img": toBase64Image(self.robot.getCameraImage()) })
-                response = await self.llmAdapter.iterate(prompt, toBase64Image(self.robot.getCameraImage()))
+                response = await self.llmAdapter.iterate(self.__buildSceneDescription(prompt), toBase64Image(self.robot.getCameraImage()))
                 self.eventManager.notify(EventType.MESSAGE_RECEIVED_FROM_LLM, { "response": response })
                 while iterations < maxIterations and not(response.ok and response.value.command == "COMPLETE"):
                     iterations += 1
@@ -64,7 +65,7 @@ class LLMRobotController:
                         if actionResult.status == ActionStatus.SUCCESS:
                             self.eventManager.notify(EventType.LLM_ROBOT_ACTION_COMPLETED, { "action": response.value })
                             self.eventManager.notify(EventType.SENDING_MESSAGE_TO_LLM, { "message": self.__buildSceneDescription(), "img": toBase64Image(self.robot.getCameraImage()) })
-                            response = await self.llmAdapter.iterate(self.__buildSceneDescription(), toBase64Image(self.robot.getCameraImage()))
+                            response = await self.llmAdapter.iterate(self.__buildSceneDescription(prompt), toBase64Image(self.robot.getCameraImage()))
                             self.eventManager.notify(EventType.MESSAGE_RECEIVED_FROM_LLM, { "response": response })
                         else:
                             self.eventManager.notify(EventType.LLM_ROBOT_ACTION_FAILED, { "action": response.value, "reason": actionResult.message })
@@ -73,13 +74,13 @@ class LLMRobotController:
                         self.eventManager.notify(EventType.LLM_DANGEROUS_ACTION, { "action": response.value })
                         message = f"The action: {response.value.command} with parameter {response.value.parameter} is considered dangerous as it may lead to a collision. Please provide a different action that is safe to execute."
                         self.eventManager.notify(EventType.SENDING_MESSAGE_TO_LLM, { "message": message, "img": toBase64Image(self.robot.getCameraImage()) })
-                        response = await self.llmAdapter.iterate(message, None)
+                        response = await self.llmAdapter.iterate(self.__buildSceneDescription(f"{prompt}\n{message}"), toBase64Image(self.robot.getCameraImage()))
                         self.eventManager.notify(EventType.MESSAGE_RECEIVED_FROM_LLM, { "response": response })
                     elif not response.ok:
                         self.eventManager.notify(EventType.LLM_INVALID_JSON_SCHEMA, {})
                         message = f"The JSON you provided is invalid. Please respond again following the correct schema\nExpected Schema: {self.llmAdapter.responseSchema}\nReceived: {response.error}\n"
                         self.eventManager.notify(EventType.SENDING_MESSAGE_TO_LLM, { "message": message, "img": toBase64Image(self.robot.getCameraImage()) })
-                        response = await self.llmAdapter.iterate(message, None)
+                        response = await self.llmAdapter.iterate(self.__buildSceneDescription(f"{prompt}\n{message}"), toBase64Image(self.robot.getCameraImage()), None)
                         self.eventManager.notify(EventType.MESSAGE_RECEIVED_FROM_LLM, { "response": response })
                 if iterations >= maxIterations:
                     self.eventManager.notify(EventType.LLM_MAX_ITERATIONS_REACHED, { "max_iterations": maxIterations })

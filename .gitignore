@@ -178,3 +178,4 @@ pyrightconfig.json
 experiments/
 
 yolov8n.pt
+.DS_Store

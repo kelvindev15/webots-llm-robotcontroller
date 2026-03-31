@@ -40,7 +40,7 @@ pyasn1_modules==0.4.1
 pybullet==3.2.7
 pydantic==2.10.6
 pydantic_core==2.27.2
-PyYAML==6.0.2
+PyYAML==6.0.3
 regex==2024.11.6
 requests==2.32.3
 requests-toolbelt==1.0.0
